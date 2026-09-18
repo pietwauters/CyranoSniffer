@@ -1,0 +1,14 @@
+{
+  "mqttBroker": "mqtt://localhost",
+  "siteId": "demo",
+  "udpPort": 50100,
+  "capture": {
+    "interface": "",
+    "cmsIp": "192.168.0.10"
+  },
+  "silenceTimeoutMs": 20000,
+  "pistes": [
+    { "id": "1", "deviceIp": "192.168.0.101" },
+    { "id": "2", "deviceIp": "192.168.0.102" }
+  ]
+}
