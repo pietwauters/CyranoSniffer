@@ -7,13 +7,12 @@ never sends anything on the Cyrano network, so the existing workflow is untouche
 Runs where it can see the packets: on the CMS PC (Windows + Npcap), or on a
 machine attached to a switch mirror port.
 
-Status: skeleton. Capture, parsing, change-detecting publisher and presence
-(`apparatus/connection`) work; the Cyrano→OPP2 field mapping awaits real traces.
+Status: working translation of INFO, DISP, HELLO, ACK, NAK, NEXT and PREV to OPP2.
 
     cp config.example.json config.json
     npm install
     node src/index.js --verbose
-    node src/index.js --replay traces/session.txt   # no hardware needed
+    node src/index.js --replay traces/sample.txt   # no hardware needed
     npm test
 
 Trace format for replay: one packet per line, `<src-ip> <dst-ip> <payload>`.

@@ -81,6 +81,7 @@ class Translator {
     this.log = log;
     this.timers = new Map();     // "<role>/<piste>" -> silence timer
     this.lastState = new Map();  // piste -> last apparatus state
+    this.hadPCard = new Set();   // pistes whose last uw2f had a P-card
   }
 
   handlePacket({ src, dst, payload }) {
@@ -147,8 +148,16 @@ class Translator {
     if (fencers) this.pub.publish(id, 'apparatus/fencers', fencers);
     const match = matchBody(f);
     if (match) this.pub.publish(id, 'apparatus/match', match);
-    // P-cards (f.*.pCard) are not published yet: OPP2 uw2f requires a timer
-    // value that Cyrano does not carry.
+
+    // P-cards only: Cyrano carries no UW2F timer, so time_ms/time are omitted
+    // (a deliberate deviation from OPP2's "at least one of" rule). Published
+    // once a card appears, and again if it later clears.
+    const p = { right: { p_card: int(f.right.pCard) }, left: { p_card: int(f.left.pCard) } };
+    const any = p.right.p_card > 0 || p.left.p_card > 0;
+    if (any || this.hadPCard.has(id)) {
+      this.pub.publish(id, 'apparatus/uw2f', p);
+      if (any) this.hadPCard.add(id); else this.hadPCard.delete(id);
+    }
   }
 
   // ── Presence ────────────────────────────────────────────────────────────

@@ -1,0 +1,9 @@
+# <src-ip> <dst-ip> <payload>   — sample session for: node src/index.js --replay traces/sample.txt
+192.168.0.10  192.168.0.101 |EFP1.1|HELLO|1|efj-eq|%|
+192.168.0.101 192.168.0.10  |EFP1.1|INFO|1|||||||||||W||%||||0|U|0|0|0|0|0|N|%||||0|U|0|0|0|0|0|N|%|
+192.168.0.10  192.168.0.101 |EFP1.1|DISP|1|efj-eq|1|A32|12|2|10:30|3:00|I|E|N|W|132|J.Smith|GBR|%|28|P.Martin|FRA|0|U|0|0|0|0|0|N|%|32|B. Panini|ITA|0|U|0|0|0|0|0|N|%|
+192.168.0.101 192.168.0.10  |EFP1.1|INFO|1|efj-eq|1|A32|12|2|10:30|3:00|I|E|N|H|132|J.Smith|GBR|%|28|P.Martin|FRA|0|U|0|0|0|0|0|N|%|32|B. Panini|ITA|0|U|0|0|0|0|0|N|%|
+192.168.0.101 192.168.0.10  |EFP1.1|INFO|1|efj-eq|1|A32|12|2|10:30|2:41|I|E|N|F|132|J.Smith|GBR|%|28|P.Martin|FRA|1|U|0|0|1|0|0|N|%|32|B. Panini|ITA|0|U|0|0|0|0|0|N|%|
+192.168.0.101 192.168.0.10  |EFP1.1|INFO|1|efj-eq|1|A32|12|2|10:30|0:00|I|E|N|E|132|J.Smith|GBR|%|28|P.Martin|FRA|5|V|0|0|0|0|0|N|%|32|B. Panini|ITA|3|D|0|0|0|0|0|N|%|
+192.168.0.10  192.168.0.101 |EFP1.1|ACK|1|efj-eq|%|
+192.168.0.101 192.168.0.10  |EFP1.1|NEXT|1|efj-eq|%|

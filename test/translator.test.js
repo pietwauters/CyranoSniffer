@@ -109,3 +109,19 @@ test('invalid enum values are normalised, not passed through', () => {
   assert.equal(get('apparatus/score')[0].p.right.status, 'U');
   assert.equal(get('apparatus/score')[0].p.priority, 'N');
 });
+
+test('P-cards publish uw2f without time, and clear when removed', () => {
+  const { tr, fromDev, get } = setup();
+  const pc = (r, l) => `|EFP1.1|INFO|1|||||||||||H||%||||0|U|0|0|0|0|0|N|${r}|%||||0|U|0|0|0|0|0|N|${l}|%|`;
+  fromDev(pc(0, 0));
+  assert.equal(get('apparatus/uw2f').length, 0);
+  fromDev(pc(1, 0));
+  fromDev(pc(0, 0));
+  tr.stop();
+  const u = get('apparatus/uw2f');
+  assert.equal(u.length, 2);
+  assert.deepEqual(u[0].p.right, { p_card: 1 });
+  assert.equal('time_ms' in u[0].p, false);
+  assert.equal(u[1].p.right.p_card, 0);
+  assert.equal(u[0].o.retain, true);
+});
