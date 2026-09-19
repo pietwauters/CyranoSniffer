@@ -86,9 +86,11 @@ const cleanPiste = s => s.trim().replace(/[+#/\0]/g, '_');
 const isBroadcast = ip => ip === '255.255.255.255' || ip.endsWith('.255') || parseInt(ip, 10) >= 224;
 
 class Translator {
-  constructor({ publisher, presence, log = () => {} }) {
+  // `suppressed(pisteId, key)` -> true while a native OPP2 apparatus owns apparatus/*.
+  constructor({ publisher, presence, suppressed = () => false, log = () => {} }) {
     this.pub = publisher;
     this.presence = presence;
+    this.suppressed = suppressed;
     this.learned = new Map();       // device IP -> piste id, from frames that carried one
     this.log = log;
     this.lastState = new Map();  // piste -> last apparatus state
@@ -183,7 +185,11 @@ class Translator {
 
   // ── Presence ────────────────────────────────────────────────────────────
 
-  alive(pisteId, role) { this.presence.alive(pisteId, role); }
+  alive(pisteId, role) {
+    // No status entry (and so no Last Will or timer) for a piste a native device owns.
+    if (role === 'apparatus' && this.suppressed(pisteId, 'apparatus/connection')) return;
+    this.presence.alive(pisteId, role);
+  }
 
   stop() { this.presence.close(); }
 }

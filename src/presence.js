@@ -80,6 +80,19 @@ class Presence {
     this.publish(e, true);
   }
 
+  // Stop reporting this piste and role, e.g. because a native device now owns
+  // the topic. Ends the connection cleanly (no Last Will) and publishes nothing,
+  // so neither our will nor our silence timer can overwrite the native status.
+  release(pisteId, role) {
+    const key = `${role}/${pisteId}`;
+    const e = this.entries.get(key);
+    if (!e) return;
+    clearTimeout(e.timer);
+    e.online = false;
+    e.client.end(true);
+    this.entries.delete(key);
+  }
+
   // Immediate teardown; does not publish (tests, and the process ending anyway).
   close() {
     for (const e of this.entries.values()) { clearTimeout(e.timer); e.client.end(true); }
@@ -101,4 +114,4 @@ class Presence {
   }
 }
 
-module.exports = { Presence };
+module.exports = { Presence, DEVICE };

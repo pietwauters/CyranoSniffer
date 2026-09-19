@@ -153,6 +153,10 @@ mosquitto_sub -h <broker-ip> -t "openpiste/#" -v
 node src\index.js --verbose
 ```
 
+If a piste already publishes OPP2 itself (a native device), the sniffer leaves its
+`apparatus/*` topics alone and says so (`[native] piste 7: ...`). To translate anyway, for
+example to test with a device that speaks both Cyrano and OPP2, add `--force`.
+
 Start the CMS as usual. You should see `[sniffer] Capturing UDP ...`, then OPP2 lines as the
 CMS and devices exchange messages. Stop with Ctrl+C. Without `--verbose` it stays quiet.
 

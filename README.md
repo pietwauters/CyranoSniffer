@@ -20,6 +20,27 @@ device:
 - The online message carries `"device": "Cyrano device (via CyranoSniffer)"`, so a
   consumer can tell it from a native OPP2 device.
 
+## Pistes that already speak OPP2
+
+A device that publishes OPP2 itself (for example an ESP32 that also speaks Cyrano to the
+CMS) already publishes better data than can be derived from Cyrano. A second, translated
+copy on the same retained topics would fight it (flickering clock, blank names: the last
+writer wins). So by default:
+
+- The sniffer subscribes to `openpiste/+/apparatus/connection`. A piste whose status is
+  `online: true` and does not carry the sniffer's own `device` marker is **native**.
+- On a native piste it publishes **no `apparatus/*`**, and gives up its own status entry
+  (its Last Will is released cleanly, so it cannot overwrite the native status).
+- It still publishes `software/*` from the CMS traffic (fencers, match, score, clock,
+  ACK/NAK), which a native device does not publish.
+- When the native device goes offline, translation for that piste resumes.
+
+Nothing is published until the retained status has been read, so there is no race at start-up.
+
+To test with a device that speaks both protocols, translate anyway:
+
+    node src/index.js --force          # or "forceTranslate": true in config.json
+
 Windows setup: [docs/windows-install.md](docs/windows-install.md).
 
 Pistes need no configuration: the piste id is read from each Cyrano message.
