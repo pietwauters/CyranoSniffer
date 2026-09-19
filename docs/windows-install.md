@@ -44,7 +44,15 @@ npm -v
 
 ## 3. Get the code
 
-With Git (`winget install Git.Git`, then reopen PowerShell):
+Git is a separate install and is not on a fresh Windows PC. Either install it, or use the ZIP.
+
+**With Git** (updating later is just `git pull`):
+
+```powershell
+winget install --id Git.Git -e
+```
+
+Close and reopen PowerShell, check with `git --version`, then:
 
 ```powershell
 cd $HOME
@@ -52,8 +60,19 @@ git clone https://github.com/pietwauters/CyranoSniffer.git
 cd CyranoSniffer
 ```
 
-Without Git: download the ZIP from the GitHub page ("Code" > "Download ZIP"), unzip it,
-and open PowerShell in that folder.
+If `winget` is not available, get the installer from <https://git-scm.com/download/win>
+and accept the defaults.
+
+**Without Git** (fine for a demo; updating means downloading the ZIP again):
+
+```powershell
+cd $HOME
+Invoke-WebRequest https://github.com/pietwauters/CyranoSniffer/archive/refs/heads/main.zip -OutFile CyranoSniffer.zip
+Expand-Archive CyranoSniffer.zip -DestinationPath .
+cd CyranoSniffer-main
+```
+
+The folder is called `CyranoSniffer-main` with this method. All later steps are the same.
 
 ## 4. Install the dependencies
 
@@ -143,6 +162,7 @@ CMS and devices exchange messages. Stop with Ctrl+C. Without `--verbose` it stay
 | Symptom | Cause and fix |
 |---|---|
 | `npm : File ...npm.ps1 cannot be loaded because running scripts is disabled` | PowerShell's execution policy. Run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` (no admin needed) and open a new PowerShell. Or use `npm.cmd`, or the classic Command Prompt. |
+| `git : The term 'git' is not recognized` | Git is not installed, or PowerShell was not reopened after installing it. See step 3, or use the ZIP method. |
 | `npm install` fails: `gyp ERR! find VS` or `find Python` | The C++ tools or Python are missing. Redo step 2 and reopen PowerShell. |
 | `Cannot find module 'cap'` or `wpcap.dll` not found | `npm install` failed to build `cap`, or Npcap was installed without WinPcap-compatible mode. Reinstall Npcap with that box ticked, then run `npm install` again. |
 | `No capture device found` | `capture.interface` does not match any adapter's IPv4. Copy the address from `--list-interfaces`. |
