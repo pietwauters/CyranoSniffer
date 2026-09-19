@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "replay": "node src/index.js --replay",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "dependencies": {
     "mqtt": "^5.0.0"
