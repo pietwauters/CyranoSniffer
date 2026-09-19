@@ -14,6 +14,7 @@ function loadConfig(file = path.join(__dirname, '..', 'config.json')) {
   config.softwareTimeoutMs = config.softwareTimeoutMs || 40000;   // device rule: 40 s without HELLO
   config.apparatusTimeoutMs = config.apparatusTimeoutMs || 45000; // INFO at least every ~17 s
   config.capture = config.capture || {};
+  config.captureRetryMs = config.captureRetryMs || 5000; // how often to retry a missing adapter
   config.pistes = config.pistes || [];
   return config;
 }

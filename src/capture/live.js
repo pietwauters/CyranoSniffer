@@ -21,12 +21,29 @@ function listInterfaces() {
   }
 }
 
+const isIp = s => /^\d+\.\d+\.\d+\.\d+$/.test(s || '');
+
 // `iface` may be the IPv4 address of the adapter (recommended) or a device name.
+function resolveDevice(Cap, iface) {
+  if (isIp(iface)) return Cap.findDevice(iface);
+  return iface || Cap.findDevice();
+}
+
+// True while the configured adapter exists.
+function adapterPresent(iface) {
+  const { Cap } = loadCap();
+  if (isIp(iface) || !iface) return Boolean(resolveDevice(Cap, iface));
+  return Cap.deviceList().some(d => d.name === iface);
+}
+
+const isFatalCaptureError = e =>
+  /not permitted|permission|access is denied/i.test(e.message) || /needs the "cap" module/.test(e.message);
+
 function startLive({ iface, udpPorts }, onPacket) {
   const { Cap, decoders } = loadCap();
   const cap = new Cap();
-  const device = /^\d+\.\d+\.\d+\.\d+$/.test(iface || '') ? Cap.findDevice(iface) : (iface || Cap.findDevice());
-  if (!device) throw new Error(`No capture device found for "${iface}". Run with --list-interfaces.`);
+  const device = resolveDevice(Cap, iface);
+  if (!device) throw new Error(`No capture device found for "${iface}" (run with --list-interfaces)`);
   const buffer = Buffer.alloc(65535);
   const linkType = cap.open(device, `udp and (${udpPorts.map(p => `port ${p}`).join(' or ')})`, 10 * 1024 * 1024, buffer);
   cap.setMinBytes && cap.setMinBytes(0);
@@ -44,4 +61,4 @@ function startLive({ iface, udpPorts }, onPacket) {
   return () => cap.close();
 }
 
-module.exports = { startLive, listInterfaces };
+module.exports = { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap };

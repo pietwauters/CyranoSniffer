@@ -165,7 +165,7 @@ CMS and devices exchange messages. Stop with Ctrl+C. Without `--verbose` it stay
 | `git : The term 'git' is not recognized` | Git is not installed, or PowerShell was not reopened after installing it. See step 3, or use the ZIP method. |
 | `npm install` fails: `gyp ERR! find VS` or `find Python` | The C++ tools or Python are missing. Redo step 2 and reopen PowerShell. |
 | `Cannot find module 'cap'` or `wpcap.dll` not found | `npm install` failed to build `cap`, or Npcap was installed without WinPcap-compatible mode. Reinstall Npcap with that box ticked, then run `npm install` again. |
-| `No capture device found` | `capture.interface` does not match any adapter's IPv4. Copy the address from `--list-interfaces`. |
+| `No capture device found for "..."` | `capture.interface` does not match any adapter's IPv4 (the example config uses `192.168.0.10`; change it). The sniffer keeps running and retries every 5 s, so it also recovers by itself when an adapter comes back (cable replugged, DHCP finished). Copy the right address from `--list-interfaces`. |
 | Capturing, but no messages | Wrong adapter (for example Wi-Fi while the devices are on Ethernet), or a `deviceIp` that does not match. Turn on `--verbose`: unmatched packets are ignored silently. Also check that the CMS uses port 50100 or 50101. |
 | Permission error opening the device | Run PowerShell as administrator, or reinstall Npcap without the "administrators only" option. |
 | Traffic between the CMS and a device running **on the same PC** is invisible | Npcap cannot capture Windows loopback unless the Npcap Loopback Adapter is installed. Real devices on the LAN are fine. |
