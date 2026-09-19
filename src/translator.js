@@ -19,12 +19,18 @@ const addr = (ip, port) => (port ? `${ip}:${port}` : ip);
 const int = (s, dflt = 0) => { const n = parseInt(s, 10); return Number.isNaN(n) ? dflt : n; };
 const has = o => Object.values(o).some(v => v !== '');
 
-// "1:09", "1:09.25", "3:00" -> { time_ms, time }
+// Cyrano stopwatch ("1:09", "01:09", "1:09.25") -> OPP2 { time_ms, time }.
+// OPP2 wants "M:SS" or "M:SS.cc" (no leading zero on the minutes; hundredths
+// mandatory below 10 s), whereas some devices send zero-padded "01:09".
 function parseClock(s) {
   const m = /^(\d+):(\d{1,2})(?:\.(\d{1,2}))?$/.exec(s);
   if (!m) return null;
   const cs = m[3] === undefined ? 0 : parseInt(m[3].padEnd(2, '0'), 10);
-  return { time_ms: (int(m[1]) * 60 + int(m[2])) * 1000 + cs * 10, time: s };
+  const time_ms = (int(m[1]) * 60 + int(m[2])) * 1000 + cs * 10;
+  const pad = n => String(n).padStart(2, '0');
+  let time = `${Math.floor(time_ms / 60000)}:${pad(Math.floor(time_ms / 1000) % 60)}`;
+  if (m[3] !== undefined || time_ms < 10000) time += `.${pad(cs)}`;
+  return { time_ms, time };
 }
 
 function fencerBody(side) {

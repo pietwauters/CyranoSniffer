@@ -33,6 +33,12 @@ const info = (state, rScore, lScore, extra = {}) =>
 
 test('parseClock', () => {
   assert.deepEqual(parseClock('1:09.25'), { time_ms: 69250, time: '1:09.25' });
+  // zero-padded minutes (as the reference device sends) become "M:SS"
+  assert.deepEqual(parseClock('01:08'), { time_ms: 68000, time: '1:08' });
+  assert.deepEqual(parseClock('00:00'), { time_ms: 0, time: '0:00.00' });
+  // hundredths are mandatory below 10 s
+  assert.deepEqual(parseClock('0:09'), { time_ms: 9000, time: '0:09.00' });
+  assert.deepEqual(parseClock('10:30'), { time_ms: 630000, time: '10:30' });
   assert.equal(parseClock('3:00').time_ms, 180000);
   assert.equal(parseClock(''), null);
 });
