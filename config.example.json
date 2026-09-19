@@ -2,7 +2,7 @@
   "mqttBroker": "mqtt://localhost",
   "siteId": "demo",
   "capture": {
-    "interface": ""
+    "interface": "192.168.0.10"
   },
   "pistes": [
     {

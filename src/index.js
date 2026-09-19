@@ -4,18 +4,24 @@
 //
 //   node src/index.js [--verbose]            live capture
 //   node src/index.js --replay traces/x.txt  replay a text trace
+//   node src/index.js --list-interfaces      show capture devices and their IPs
 
 const mqtt = require('mqtt');
 const { loadConfig, pisteByIp } = require('./config');
 const { Publisher }  = require('./publisher');
 const { Translator } = require('./translator');
 const { replay }     = require('./capture/replay');
-const { startLive }  = require('./capture/live');
+const { startLive, listInterfaces } = require('./capture/live');
 
 const args    = process.argv.slice(2);
 const verbose = args.includes('--verbose') || args.includes('-v');
 const log     = (...a) => { if (verbose) console.log(...a); };
 const replayFile = args.includes('--replay') ? args[args.indexOf('--replay') + 1] : null;
+
+if (args.includes('--list-interfaces')) {
+  try { listInterfaces(); } catch (e) { console.error(e.message); process.exit(1); }
+  process.exit(0);
+}
 
 let config;
 try { config = loadConfig(); } catch (e) { console.error('[config]', e.message); process.exit(1); }

@@ -4,15 +4,29 @@
 // Windows: install Npcap first (https://npcap.com). Linux: run as root or
 // setcap cap_net_raw on the node binary.
 
-function startLive({ iface, udpPorts }, onPacket) {
-  let Cap, decoders;
+function loadCap() {
   try {
-    ({ Cap, decoders } = require('cap'));
+    return require('cap');
   } catch (e) {
     throw new Error(`Live capture needs the "cap" module (and Npcap on Windows): ${e.message}`);
   }
+}
+
+// Prints every capture device with its IPv4 addresses.
+function listInterfaces() {
+  const { Cap } = loadCap();
+  for (const d of Cap.deviceList()) {
+    const ips = d.addresses.filter(a => /^\d+\.\d+\.\d+\.\d+$/.test(a.addr)).map(a => a.addr);
+    console.log(`${d.name}\n    ${d.description || '(no description)'}\n    IPv4: ${ips.join(', ') || '-'}`);
+  }
+}
+
+// `iface` may be the IPv4 address of the adapter (recommended) or a device name.
+function startLive({ iface, udpPorts }, onPacket) {
+  const { Cap, decoders } = loadCap();
   const cap = new Cap();
-  const device = iface || Cap.findDevice();
+  const device = /^\d+\.\d+\.\d+\.\d+$/.test(iface || '') ? Cap.findDevice(iface) : (iface || Cap.findDevice());
+  if (!device) throw new Error(`No capture device found for "${iface}". Run with --list-interfaces.`);
   const buffer = Buffer.alloc(65535);
   const linkType = cap.open(device, `udp and (${udpPorts.map(p => `port ${p}`).join(' or ')})`, 10 * 1024 * 1024, buffer);
   cap.setMinBytes && cap.setMinBytes(0);
@@ -30,4 +44,4 @@ function startLive({ iface, udpPorts }, onPacket) {
   return () => cap.close();
 }
 
-module.exports = { startLive };
+module.exports = { startLive, listInterfaces };
