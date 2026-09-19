@@ -45,7 +45,15 @@ client.on('connect', () => {
     replay(replayFile, onPacket);
     setTimeout(() => { translator.stop(); client.end(); }, 500);
   } else {
-    startLive({ iface: config.capture.interface, udpPorts: config.udpPorts }, onPacket);
+    try {
+      startLive({ iface: config.capture.interface, udpPorts: config.udpPorts }, onPacket);
+    } catch (e) {
+      console.error(`[capture] ${e.message}`);
+      if (/not permitted|permission/i.test(e.message)) {
+        console.error('[capture] Capturing needs privileges: run with sudo, or on Linux grant Node the capability (see README).');
+      }
+      process.exit(1);
+    }
     log(`[sniffer] Capturing UDP ${config.udpPorts.join('/')} — ${config.pistes.length} piste(s)`);
   }
 });
