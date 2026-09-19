@@ -5,19 +5,27 @@ const path = require('path');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
+// Defaults for optional settings. The README documents the same list.
+const DEFAULTS = {
+  siteId: 'site',
+  udpPorts: [50100, 50101], // the spec says 50100, but the reference device listens on 50101 and sends to 50100
+  softwareTimeoutMs: 40000, // device rule: 40 s without HELLO
+  apparatusTimeoutMs: 35000, // devices send at least every ~17 s
+  captureRetryMs: 5000, // how often to retry a missing adapter
+  forceTranslate: false,
+};
+
 function loadConfig(file = CONFIG_PATH) {
   if (!fs.existsSync(file)) {
     throw new Error(`${file} not found. Copy config.example.json to config.json and edit it.`);
   }
   const config = JSON.parse(fs.readFileSync(file, 'utf8'));
-  // The spec says 50100, but the reference device listens on 50101 and sends
-  // to 50100, so capture both.
-  config.udpPorts = config.udpPorts || [50100, 50101];
-  config.softwareTimeoutMs = config.softwareTimeoutMs || 40000;   // device rule: 40 s without HELLO
-  config.siteId = config.siteId || 'site';
-  config.apparatusTimeoutMs = config.apparatusTimeoutMs || 35000; // devices send at least every ~17 s
+  // Without this, mqtt.js would silently fall back to localhost.
+  if (typeof config.mqttBroker !== 'string' || config.mqttBroker.trim() === '') {
+    throw new Error('"mqttBroker" is missing in config.json, e.g. "mqtt://openpiste.local"');
+  }
+  for (const [key, value] of Object.entries(DEFAULTS)) config[key] = config[key] || value;
   config.capture = config.capture || {};
-  config.captureRetryMs = config.captureRetryMs || 5000; // how often to retry a missing adapter
   return config;
 }
 
@@ -29,4 +37,4 @@ function saveInterface(ip, file = CONFIG_PATH) {
   fs.writeFileSync(file, JSON.stringify(raw, null, 2) + '\n');
 }
 
-module.exports = { loadConfig, saveInterface, CONFIG_PATH };
+module.exports = { loadConfig, saveInterface, CONFIG_PATH, DEFAULTS };

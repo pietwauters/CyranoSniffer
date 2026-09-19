@@ -3,11 +3,5 @@
   "siteId": "demo",
   "capture": {
     "interface": ""
-  },
-  "udpPorts": [
-    50100,
-    50101
-  ],
-  "softwareTimeoutMs": 40000,
-  "apparatusTimeoutMs": 45000
+  }
 }

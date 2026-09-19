@@ -15,6 +15,7 @@ const { Publisher }  = require('./publisher');
 const { Translator } = require('./translator');
 const { Presence }   = require('./presence');
 const { NativeWatcher, makeSuppress } = require('./native');
+const { usageText } = require('./usage');
 const { replay }     = require('./capture/replay');
 const { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap } = require('./capture/live');
 const { superviseCapture } = require('./capture/supervisor');
@@ -23,7 +24,16 @@ const args    = process.argv.slice(2);
 const verbose = args.includes('--verbose') || args.includes('-v');
 // Identical consecutive verbose lines are collapsed into one plus a repeat count.
 const log     = verbose ? collapseRepeats((...a) => console.log(...a)) : Object.assign(() => {}, { flush() {} });
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(usageText());
+  process.exit(0);
+}
+
 const replayFile = args.includes('--replay') ? args[args.indexOf('--replay') + 1] : null;
+if (args.includes('--replay') && (!replayFile || replayFile.startsWith('-'))) {
+  console.error('--replay needs a trace file, e.g. --replay traces/sample.txt');
+  process.exit(1);
+}
 
 if (args.includes('--list-interfaces')) {
   try { listInterfaces(); } catch (e) { console.error(e.message); process.exit(1); }

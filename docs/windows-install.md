@@ -101,10 +101,13 @@ notepad config.json
 
 | Field | What to put |
 |---|---|
-| `mqttBroker` | Broker URL, e.g. `mqtt://192.168.0.5` (the Pi) or `mqtt://localhost` |
-| `siteId` | A name for this venue (reserved for the cloud bridge) |
-| `udpPorts` | Leave at `[50100, 50101]` |
+| `mqttBroker` | Broker URL, e.g. `mqtt://192.168.0.5` (the Pi) or `mqtt://openpiste.local`. Required |
+| `siteId` | A name for this venue |
 | `capture.interface` | **Leave it empty the first time.** On start the sniffer lists your network adapters and asks you to pick the one the devices are on; the choice is saved here as that adapter's IPv4 address. You can also set it by hand (see `--list-interfaces` or `ipconfig`) |
+
+Everything else has a sensible default. The full list of settings and command-line
+options (`--verbose`, `--replay`, `--list-interfaces`, `--force`, `--help`) is in the
+[README](../README.md#configuration).
 
 Pistes need no configuration: each piste is detected from the piste field in the Cyrano
 messages, and that field becomes the piste id in the MQTT topic. (An older config with a
@@ -116,7 +119,6 @@ Example:
 {
   "mqttBroker": "mqtt://192.168.0.5",
   "siteId": "demo",
-  "udpPorts": [50100, 50101],
   "capture": { "interface": "" }
 }
 ```
