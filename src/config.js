@@ -21,9 +21,10 @@ function loadConfig(file = CONFIG_PATH) {
   return config;
 }
 
-// deviceIp -> piste id
+// Optional explicit deviceIp -> piste id overrides. Without them the piste id
+// is taken from the Cyrano messages themselves.
 function pisteByIp(config) {
-  return new Map(config.pistes.map(p => [p.deviceIp, p.id]));
+  return new Map(config.pistes.filter(p => p.deviceIp && p.id).map(p => [p.deviceIp, String(p.id)]));
 }
 
 // Writes capture.interface back to the file, leaving everything else as the

@@ -4,16 +4,7 @@
   "capture": {
     "interface": "192.168.0.10"
   },
-  "pistes": [
-    {
-      "id": "1",
-      "deviceIp": "192.168.0.101"
-    },
-    {
-      "id": "2",
-      "deviceIp": "192.168.0.102"
-    }
-  ],
+  "pistes": [],
   "udpPorts": [
     50100,
     50101

@@ -3,8 +3,10 @@
 // Cyrano frame -> OPP2 messages, per piste.
 //
 // Direction comes from the command (HELLO/DISP/ACK/NAK are sent by the CMS,
-// INFO/NEXT/PREV by the apparatus); the device IP on the other end of the
-// packet identifies the piste. Mapping follows Opp2Handler::convertCyranoTo*
+// INFO/NEXT/PREV by the apparatus). The piste is the Piste field of the frame,
+// so no configuration is needed. Some incomplete INFO frames leave it empty;
+// for those we use the piste last seen from the same device IP. A configured
+// deviceIp -> id entry overrides both. Mapping follows Opp2Handler::convertCyranoTo*
 // and convertOpp2ToCyrano in esp32scoringdeviceMqtt, and level2.md.
 
 const { parse } = require('./parser');
@@ -71,12 +73,17 @@ function clockBody(f, running) {
   return c && { running, ...c };
 }
 
+// Piste ids become an MQTT topic level: no wildcards or level separators.
+const cleanPiste = s => s.trim().replace(/[+#/\0]/g, '_');
+
+const isBroadcast = ip => ip === '255.255.255.255' || ip.endsWith('.255') || parseInt(ip, 10) >= 224;
+
 class Translator {
-  constructor({ publisher, pisteByIp, pisteIds = [], softwareTimeoutMs = 40000,
+  constructor({ publisher, pisteByIp = new Map(), softwareTimeoutMs = 40000,
                 apparatusTimeoutMs = 45000, log = () => {} }) {
     this.pub = publisher;
-    this.pisteByIp = pisteByIp;
-    this.pisteIds = new Set(pisteIds);
+    this.pisteByIp = pisteByIp;     // explicit overrides from the config
+    this.learned = new Map();       // device IP -> piste id, from frames that carried one
     this.timeouts = { apparatus: apparatusTimeoutMs, software: softwareTimeoutMs };
     this.log = log;
     this.timers = new Map();     // "<role>/<piste>" -> silence timer
@@ -91,12 +98,23 @@ class Translator {
     const fromSoftware = FROM_SOFTWARE.has(f.command);
     if (!fromSoftware && !FROM_APPARATUS.has(f.command)) { this.log(`[cyrano] unknown ${f.command}`); return; }
 
-    const pisteId = this.pisteByIp.get(fromSoftware ? dst : src)
-      || (this.pisteIds.has(f.piste) ? f.piste : null);
+    const pisteId = this.resolvePiste(fromSoftware ? dst : src, f.piste);
     if (!pisteId) return;
 
     const handler = this[`on${f.command}`];
     handler.call(this, pisteId, f);
+  }
+
+  // deviceIp is the device end of the packet.
+  resolvePiste(deviceIp, pisteField) {
+    const forced = this.pisteByIp.get(deviceIp);
+    if (forced) return forced;
+    const id = cleanPiste(pisteField);
+    if (id) {
+      if (!isBroadcast(deviceIp)) this.learned.set(deviceIp, id);
+      return id;
+    }
+    return this.learned.get(deviceIp) || null;
   }
 
   // ── Software → apparatus ────────────────────────────────────────────────

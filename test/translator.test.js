@@ -7,10 +7,10 @@ const { Translator, parseClock } = require('../src/translator');
 
 const CMS = '10.0.0.10', DEV = '10.0.0.101';
 
-function setup() {
+function setup(overrides = new Map()) {
   const sent = [];
   const pub = new Publisher({ publish: (t, p, o) => sent.push({ t: t.replace('openpiste/1/', ''), p: JSON.parse(p), o }) });
-  const tr  = new Translator({ publisher: pub, pisteByIp: new Map([[DEV, '1']]), pisteIds: ['1'] });
+  const tr  = new Translator({ publisher: pub, pisteByIp: overrides });
   const fromDev = s => tr.handlePacket({ src: DEV, dst: CMS, payload: Buffer.from(s) });
   const fromCms = s => tr.handlePacket({ src: CMS, dst: DEV, payload: Buffer.from(s) });
   const get = t => sent.filter(m => m.t === t);
@@ -91,14 +91,11 @@ test('DISP publishes software fencers/match/score/clock, HELLO software presence
   assert.equal(get('apparatus/connection').length, 0); // DISP is not device traffic
 });
 
-test('numeric poule maps to pool; unknown IPs and pistes are ignored', () => {
+test('numeric poule maps to pool', () => {
   const { tr, fromDev, sent } = setup();
   fromDev(info('W', 0, 0).replace('|A32|', '|3|'));
-  assert.equal(sent.find(m => m.t === 'apparatus/match').p.phase_type, 'pool');
-  const n = sent.length;
-  tr.handlePacket({ src: '10.0.0.99', dst: CMS, payload: Buffer.from('|EFP1.1|INFO|9|x|%|') });
   tr.stop();
-  assert.equal(sent.length, n);
+  assert.equal(sent.find(m => m.t === 'apparatus/match').p.phase_type, 'pool');
 });
 
 test('invalid enum values are normalised, not passed through', () => {
@@ -124,4 +121,65 @@ test('P-cards publish uw2f without time, and clear when removed', () => {
   assert.equal('time_ms' in u[0].p, false);
   assert.equal(u[1].p.right.p_card, 0);
   assert.equal(u[0].o.retain, true);
+});
+
+// ── Piste identification without configuration ───────────────────────────
+
+// Minimal INFO: piste field, 10 empty general fields, then the state (field 14).
+const mini = (piste, state) => `|EFP1.1|INFO|${piste}|${'|'.repeat(10)}${state}||%|`;
+
+function raw() {
+  const sent = [];
+  const pub = new Publisher({ publish: (t, p) => sent.push({ t, p: JSON.parse(p) }) });
+  const tr = new Translator({ publisher: pub });
+  return { sent, tr, send: (src, dst, s) => tr.handlePacket({ src, dst, payload: Buffer.from(s) }) };
+}
+
+test('the piste comes from the message, for any device IP', () => {
+  const { tr, send, sent } = raw();
+  send('10.0.0.201', CMS, mini('podium', 'W'));
+  send('10.0.0.202', CMS, mini('17', 'H'));
+  tr.stop();
+  assert.ok(sent.some(m => m.t === 'openpiste/podium/apparatus/state'));
+  assert.ok(sent.some(m => m.t === 'openpiste/17/apparatus/state'));
+});
+
+test('an empty piste field uses the piste last seen from that device IP', () => {
+  const { tr, send, sent } = raw();
+  send('10.0.0.201', CMS, mini('1', 'W'));
+  send('10.0.0.201', CMS, mini('', 'H'));
+  send('10.0.0.99',  CMS, mini('', 'F')); // never seen: cannot be placed
+  tr.stop();
+  assert.deepEqual(sent.filter(m => m.t.endsWith('/apparatus/state')).map(m => [m.t, m.p.state]),
+    [['openpiste/1/apparatus/state', 'W'], ['openpiste/1/apparatus/state', 'H']]);
+});
+
+test('a HELLO from the CMS teaches the device IP for later empty INFOs', () => {
+  const { tr, send, sent } = raw();
+  send(CMS, '10.0.0.201', '|EFP1.1|HELLO|7|efj-eq|%|');
+  send('10.0.0.201', CMS, mini('', 'W'));
+  tr.stop();
+  assert.ok(sent.some(m => m.t === 'openpiste/7/apparatus/state'));
+});
+
+test('a broadcast destination is not learned as a device', () => {
+  const { tr, send, sent } = raw();
+  send(CMS, '10.0.0.255', '|EFP1.1|HELLO|7|efj-eq|%|');
+  send('10.0.0.255', CMS, mini('', 'W'));
+  tr.stop();
+  assert.equal(sent.some(m => m.t === 'openpiste/7/apparatus/state'), false);
+});
+
+test('piste ids are made safe to use as a topic level', () => {
+  const { tr, send, sent } = raw();
+  send('10.0.0.201', CMS, mini(' a/b+c# ', 'W'));
+  tr.stop();
+  assert.ok(sent.some(m => m.t === 'openpiste/a_b_c_/apparatus/state'));
+});
+
+test('a configured deviceIp overrides the piste in the message', () => {
+  const { tr, fromDev, get } = setup(new Map([[DEV, 'Red']]));
+  fromDev(info('W', 0, 0));
+  tr.stop();
+  assert.equal(get('apparatus/state').length, 0); // published under Red, not 1
 });

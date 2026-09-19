@@ -6,6 +6,8 @@ never sends anything on the Cyrano network, so the existing workflow is untouche
 
 Windows setup: [docs/windows-install.md](docs/windows-install.md).
 
+Pistes need no configuration: the piste id is read from each Cyrano message.
+
 Runs where it can see the packets: on the CMS PC (Windows + Npcap), or on a
 machine attached to a switch mirror port.
 
