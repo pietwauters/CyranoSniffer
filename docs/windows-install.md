@@ -104,8 +104,11 @@ notepad config.json
 | `mqttBroker` | Broker URL, e.g. `mqtt://192.168.0.5` (the Pi) or `mqtt://localhost` |
 | `siteId` | A name for this venue (reserved for the cloud bridge) |
 | `udpPorts` | Leave at `[50100, 50101]` |
-| `capture.interface` | The **IPv4 address of this PC's wired network adapter**, the one the devices are on. Find it with `--list-interfaces` or `ipconfig` |
-| `pistes` | **Optional; leave it as `[]`.** Pistes are detected from the messages themselves, and the piste id in the MQTT topic is the Cyrano piste field. Only add `{ "id": "...", "deviceIp": "..." }` to force a different id for a given device IP |
+| `capture.interface` | **Leave it empty the first time.** On start the sniffer lists your network adapters and asks you to pick the one the devices are on; the choice is saved here as that adapter's IPv4 address. You can also set it by hand (see `--list-interfaces` or `ipconfig`) |
+
+Pistes need no configuration: each piste is detected from the piste field in the Cyrano
+messages, and that field becomes the piste id in the MQTT topic. (An older config with a
+`pistes` block still loads; the block is ignored and can be deleted.)
 
 Example:
 
@@ -114,8 +117,7 @@ Example:
   "mqttBroker": "mqtt://192.168.0.5",
   "siteId": "demo",
   "udpPorts": [50100, 50101],
-  "capture": { "interface": "192.168.0.10" },
-  "pistes": []
+  "capture": { "interface": "" }
 }
 ```
 
@@ -162,7 +164,7 @@ CMS and devices exchange messages. Stop with Ctrl+C. Without `--verbose` it stay
 | `git : The term 'git' is not recognized` | Git is not installed, or PowerShell was not reopened after installing it. See step 3, or use the ZIP method. |
 | `npm install` fails: `gyp ERR! find VS` or `find Python` | The C++ tools or Python are missing. Redo step 2 and reopen PowerShell. |
 | `Cannot find module 'cap'` or `wpcap.dll` not found | `npm install` failed to build `cap`, or Npcap was installed without WinPcap-compatible mode. Reinstall Npcap with that box ticked, then run `npm install` again. |
-| `No capture device found for "..."` | `capture.interface` does not match any adapter's IPv4 (the example config uses `192.168.0.10`). The sniffer lists the adapters it found, marks the ones on the same network as your pistes, and **asks you to pick one** (Enter accepts the suggested one); your choice is saved to `config.json`. When it runs without a terminal it only prints the list. Either way it keeps running and retries every 5 s, so it also recovers when an adapter comes back (cable replugged, DHCP finished). |
+| `No capture device found for "..."` | `capture.interface` is empty or matches no adapter's IPv4. The sniffer lists the adapters it found and **asks you to pick one**; your choice is saved to `config.json`. When it runs without a terminal it only prints the list. Either way it keeps running and retries every 5 s, so it also recovers when an adapter comes back (cable replugged, DHCP finished). |
 | Capturing, but no messages | Wrong adapter (for example Wi-Fi while the devices are on Ethernet), or the CMS uses other UDP ports (set `udpPorts`). Turn on `--verbose` to see what is seen and skipped. |
 | Permission error opening the device | Run PowerShell as administrator, or reinstall Npcap without the "administrators only" option. |
 | Traffic between the CMS and a device running **on the same PC** is invisible | Npcap cannot capture Windows loopback unless the Npcap Loopback Adapter is installed. Real devices on the LAN are fine. |

@@ -15,25 +15,18 @@ const devices = [
   { name: 'vbox', description: 'VirtualBox', addresses: [{ addr: '192.168.56.1' }] },
 ];
 
-test('lists IPv4 adapters, those on the pistes\' network first', () => {
-  const l = candidateAdapters(devices, ['192.168.0.101']);
-  assert.deepEqual(l.map(c => c.ip), ['192.168.0.10', '10.154.1.100', '192.168.56.1']);
-  assert.equal(l[0].sameNetwork, true);
-  assert.equal(l[1].sameNetwork, false);
+test('lists only adapters that have an IPv4 address', () => {
+  const l = candidateAdapters(devices);
+  assert.deepEqual(l.map(c => c.ip), ['10.154.1.100', '192.168.0.10', '192.168.56.1']);
+  assert.equal(l[1].description, 'Ethernet');
 });
 
-test('Enter picks the only adapter on the pistes\' network', async () => {
-  const l = candidateAdapters(devices, ['192.168.0.101']);
-  assert.equal((await chooseAdapter(l, async () => '')).ip, '192.168.0.10');
-});
-
-test('Enter keeps waiting when there is no single match', async () => {
-  const l = candidateAdapters(devices, ['172.16.0.5']);
-  assert.equal(await chooseAdapter(l, async () => ''), null);
+test('Enter keeps waiting', async () => {
+  assert.equal(await chooseAdapter(candidateAdapters(devices), async () => ''), null);
 });
 
 test('a number selects; bad input asks again', async () => {
-  const l = candidateAdapters(devices, ['172.16.0.5']);
+  const l = candidateAdapters(devices);
   const answers = ['x', '9', '2'];
   const orig = console.log; console.log = () => {};
   const c = await chooseAdapter(l, async () => answers.shift());

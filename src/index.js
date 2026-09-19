@@ -8,7 +8,7 @@
 
 const mqtt = require('mqtt');
 const readline = require('readline');
-const { loadConfig, pisteByIp, saveInterface } = require('./config');
+const { loadConfig, saveInterface } = require('./config');
 const { candidateAdapters, formatCandidates, chooseAdapter } = require('./capture/select');
 const { Publisher }  = require('./publisher');
 const { Translator } = require('./translator');
@@ -29,13 +29,16 @@ if (args.includes('--list-interfaces')) {
 let config;
 try { config = loadConfig(); } catch (e) { console.error('[config]', e.message); process.exit(1); }
 
+if (config.pistes) {
+  console.warn('[config] "pistes" is no longer used: piste ids are read from the Cyrano messages. You can delete it.');
+}
+
 const client = mqtt.connect(config.mqttBroker);
 client.on('connect', () => log(`[MQTT] Connected to ${config.mqttBroker}`));
 client.on('error',   e  => console.error('[MQTT] Error:', e.message));
 
 const translator = new Translator({
   publisher: new Publisher(client, log),
-  pisteByIp: pisteByIp(config),
   softwareTimeoutMs: config.softwareTimeoutMs,
   apparatusTimeoutMs: config.apparatusTimeoutMs,
   log,
@@ -59,7 +62,7 @@ if (replayFile) {
   async function offerAdapters() {
     offered = true;
     const { Cap } = loadCap();
-    const list = candidateAdapters(Cap.deviceList(), config.pistes.map(p => p.deviceIp));
+    const list = candidateAdapters(Cap.deviceList());
     if (list.length === 0) { console.error('[capture] No adapter with an IPv4 address found; waiting.'); return; }
     console.error(`[capture] Available adapters:\n${formatCandidates(list)}`);
     if (!process.stdin.isTTY) {
@@ -89,7 +92,7 @@ if (replayFile) {
         throw e;
       }
       everOpened = true;
-      log(`[sniffer] Capturing UDP ${config.udpPorts.join('/')} — ${config.pistes.length ? config.pistes.length + ' configured piste(s)' : 'pistes detected from the messages'}`);
+      log(`[sniffer] Capturing UDP ${config.udpPorts.join('/')} — pistes are detected from the messages`);
       return close;
     },
     present: () => adapterPresent(config.capture.interface),

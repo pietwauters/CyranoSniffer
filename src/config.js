@@ -17,14 +17,7 @@ function loadConfig(file = CONFIG_PATH) {
   config.apparatusTimeoutMs = config.apparatusTimeoutMs || 45000; // INFO at least every ~17 s
   config.capture = config.capture || {};
   config.captureRetryMs = config.captureRetryMs || 5000; // how often to retry a missing adapter
-  config.pistes = config.pistes || [];
   return config;
-}
-
-// Optional explicit deviceIp -> piste id overrides. Without them the piste id
-// is taken from the Cyrano messages themselves.
-function pisteByIp(config) {
-  return new Map(config.pistes.filter(p => p.deviceIp && p.id).map(p => [p.deviceIp, String(p.id)]));
 }
 
 // Writes capture.interface back to the file, leaving everything else as the
@@ -35,4 +28,4 @@ function saveInterface(ip, file = CONFIG_PATH) {
   fs.writeFileSync(file, JSON.stringify(raw, null, 2) + '\n');
 }
 
-module.exports = { loadConfig, pisteByIp, saveInterface, CONFIG_PATH };
+module.exports = { loadConfig, saveInterface, CONFIG_PATH };

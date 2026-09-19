@@ -7,10 +7,10 @@ const { Translator, parseClock } = require('../src/translator');
 
 const CMS = '10.0.0.10', DEV = '10.0.0.101';
 
-function setup(overrides = new Map()) {
+function setup() {
   const sent = [];
   const pub = new Publisher({ publish: (t, p, o) => sent.push({ t: t.replace('openpiste/1/', ''), p: JSON.parse(p), o }) });
-  const tr  = new Translator({ publisher: pub, pisteByIp: overrides });
+  const tr  = new Translator({ publisher: pub });
   const fromDev = s => tr.handlePacket({ src: DEV, dst: CMS, payload: Buffer.from(s) });
   const fromCms = s => tr.handlePacket({ src: CMS, dst: DEV, payload: Buffer.from(s) });
   const get = t => sent.filter(m => m.t === t);
@@ -175,11 +175,4 @@ test('piste ids are made safe to use as a topic level', () => {
   send('10.0.0.201', CMS, mini(' a/b+c# ', 'W'));
   tr.stop();
   assert.ok(sent.some(m => m.t === 'openpiste/a_b_c_/apparatus/state'));
-});
-
-test('a configured deviceIp overrides the piste in the message', () => {
-  const { tr, fromDev, get } = setup(new Map([[DEV, 'Red']]));
-  fromDev(info('W', 0, 0));
-  tr.stop();
-  assert.equal(get('apparatus/state').length, 0); // published under Red, not 1
 });

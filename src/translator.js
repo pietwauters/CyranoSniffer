@@ -5,8 +5,7 @@
 // Direction comes from the command (HELLO/DISP/ACK/NAK are sent by the CMS,
 // INFO/NEXT/PREV by the apparatus). The piste is the Piste field of the frame,
 // so no configuration is needed. Some incomplete INFO frames leave it empty;
-// for those we use the piste last seen from the same device IP. A configured
-// deviceIp -> id entry overrides both. Mapping follows Opp2Handler::convertCyranoTo*
+// for those we use the piste last seen from the same device IP. Mapping follows Opp2Handler::convertCyranoTo*
 // and convertOpp2ToCyrano in esp32scoringdeviceMqtt, and level2.md.
 
 const { parse } = require('./parser');
@@ -79,10 +78,9 @@ const cleanPiste = s => s.trim().replace(/[+#/\0]/g, '_');
 const isBroadcast = ip => ip === '255.255.255.255' || ip.endsWith('.255') || parseInt(ip, 10) >= 224;
 
 class Translator {
-  constructor({ publisher, pisteByIp = new Map(), softwareTimeoutMs = 40000,
+  constructor({ publisher, softwareTimeoutMs = 40000,
                 apparatusTimeoutMs = 45000, log = () => {} }) {
     this.pub = publisher;
-    this.pisteByIp = pisteByIp;     // explicit overrides from the config
     this.learned = new Map();       // device IP -> piste id, from frames that carried one
     this.timeouts = { apparatus: apparatusTimeoutMs, software: softwareTimeoutMs };
     this.log = log;
@@ -107,8 +105,6 @@ class Translator {
 
   // deviceIp is the device end of the packet.
   resolvePiste(deviceIp, pisteField) {
-    const forced = this.pisteByIp.get(deviceIp);
-    if (forced) return forced;
     const id = cleanPiste(pisteField);
     if (id) {
       if (!isBroadcast(deviceIp)) this.learned.set(deviceIp, id);
