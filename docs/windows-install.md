@@ -4,8 +4,9 @@ For the demo setup: CyranoSniffer runs on the **same Windows PC as the CMS**, so
 sees every Cyrano packet without any network changes. It only listens; it never
 sends anything on the Cyrano network. It sends its output to an MQTT broker.
 
-Tested here: the code and the unit tests on Linux, and the `cap` module compiling
-on Node 20. **Live capture on Windows itself has not been tested yet.**
+Tested here: the code, the unit tests and a live loopback capture on Linux, and the
+`cap` module compiling and loading on Node 20 and Node 24. **Capture on Windows itself
+has not been tested yet.**
 
 You need administrator rights for steps 1–3 (once). Use a normal PowerShell for the rest.
 
@@ -17,16 +18,17 @@ You need administrator rights for steps 1–3 (once). Use a normal PowerShell fo
 3. Leave "Restrict Npcap driver's access to Administrators only" **unticked**, so
    a normal user can capture.
 
-## 2. Node.js 20 LTS
+## 2. Node.js (current LTS)
 
-1. Download the **Node.js 20 LTS** Windows installer from <https://nodejs.org>.
-   Use 20, not a newer release: the `cap` module was compiled successfully on 20,
-   and newer versions are untested.
-2. On the "Tools for Native Modules" page, **tick "Automatically install the necessary
-   tools"**. It opens a second window that installs Python and the Visual Studio
-   C++ Build Tools. This takes 10–20 minutes. Let it finish.
+1. Download the current **LTS** Windows installer from <https://nodejs.org> (Node 24 at the
+   time of writing). Node 20 is end-of-life; do not use it.
+2. If the installer shows a "Tools for Native Modules" page, **tick "Automatically install
+   the necessary tools"**. It opens a second window that installs Python and the Visual
+   Studio C++ Build Tools. This takes 10–20 minutes. Let it finish.
 
-If you skipped that option, install the tools by hand in an administrator PowerShell:
+The `cap` module is compiled during `npm install`, so the tools are needed even though
+you do not write any C++. If the installer did not offer them, install them by hand in an
+administrator PowerShell:
 
 ```powershell
 winget install Python.Python.3.12
@@ -36,7 +38,7 @@ winget install Microsoft.VisualStudio.2022.BuildTools --override "--wait --passi
 Then **close and reopen PowerShell** so that `node` and `npm` are found. Check:
 
 ```powershell
-node -v      # v20.x
+node -v      # v24.x (any current LTS)
 npm -v
 ```
 
@@ -60,7 +62,9 @@ npm install
 ```
 
 This builds the `cap` module, which is why step 2 needs the C++ tools. It should end
-without errors (warnings are fine). To confirm that it loaded:
+without errors (warnings are fine). npm 11 prints a warning that `cap`'s install script is
+"not yet covered by allowScripts"; the build still runs. If a newer npm blocks it instead,
+run the `npm install-scripts approve cap` command that npm suggests, or `npm rebuild cap`. To confirm that it loaded:
 
 ```powershell
 node src\index.js --list-interfaces
