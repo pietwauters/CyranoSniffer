@@ -3,7 +3,9 @@
 const fs   = require('fs');
 const path = require('path');
 
-function loadConfig(file = path.join(__dirname, '..', 'config.json')) {
+const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
+
+function loadConfig(file = CONFIG_PATH) {
   if (!fs.existsSync(file)) {
     throw new Error(`${file} not found. Copy config.example.json to config.json and edit it.`);
   }
@@ -24,4 +26,12 @@ function pisteByIp(config) {
   return new Map(config.pistes.map(p => [p.deviceIp, p.id]));
 }
 
-module.exports = { loadConfig, pisteByIp };
+// Writes capture.interface back to the file, leaving everything else as the
+// user wrote it (loadConfig's defaults are not persisted).
+function saveInterface(ip, file = CONFIG_PATH) {
+  const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+  raw.capture = { ...raw.capture, interface: ip };
+  fs.writeFileSync(file, JSON.stringify(raw, null, 2) + '\n');
+}
+
+module.exports = { loadConfig, pisteByIp, saveInterface, CONFIG_PATH };

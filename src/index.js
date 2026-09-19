@@ -7,7 +7,9 @@
 //   node src/index.js --list-interfaces      show capture devices and their IPs
 
 const mqtt = require('mqtt');
-const { loadConfig, pisteByIp } = require('./config');
+const readline = require('readline');
+const { loadConfig, pisteByIp, saveInterface } = require('./config');
+const { candidateAdapters, formatCandidates, chooseAdapter } = require('./capture/select');
 const { Publisher }  = require('./publisher');
 const { Translator } = require('./translator');
 const { replay }     = require('./capture/replay');
@@ -50,9 +52,44 @@ if (replayFile) {
   // Capture does not depend on the broker being reachable, and must start
   // exactly once (the MQTT 'connect' event fires again on every reconnect).
   try { loadCap(); } catch (e) { console.error(`[capture] ${e.message}`); process.exit(1); }
+  let everOpened = false, offered = false;
+
+  // The configured adapter was never found: show the options and, when a person
+  // is at the keyboard, let them pick one and save it. Unattended runs only
+  // print the list and keep retrying.
+  async function offerAdapters() {
+    offered = true;
+    const { Cap } = loadCap();
+    const list = candidateAdapters(Cap.deviceList(), config.pistes.map(p => p.deviceIp));
+    if (list.length === 0) { console.error('[capture] No adapter with an IPv4 address found; waiting.'); return; }
+    console.error(`[capture] Available adapters:\n${formatCandidates(list)}`);
+    if (!process.stdin.isTTY) {
+      console.error('[capture] Set "capture.interface" in config.json to one of these addresses.');
+      return;
+    }
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.on('SIGINT', () => { rl.close(); process.emit('SIGINT'); });
+    const ask = q => new Promise(resolve => rl.question(q, resolve));
+    const chosen = await chooseAdapter(list, ask);
+    rl.close();
+    if (!chosen || everOpened) return; // kept waiting, or it appeared meanwhile
+    saveInterface(chosen.ip);
+    config.capture.interface = chosen.ip;
+    console.log(`[capture] Saved capture.interface = ${chosen.ip} to config.json`);
+  }
+
   const capture = superviseCapture({
     open: () => {
-      const close = startLive({ iface: config.capture.interface, udpPorts: config.udpPorts }, onPacket);
+      let close;
+      try {
+        close = startLive({ iface: config.capture.interface, udpPorts: config.udpPorts }, onPacket);
+      } catch (e) {
+        if (!everOpened && !offered && /No capture device/.test(e.message)) {
+          offerAdapters().catch(err => console.error(`[capture] ${err.message}`));
+        }
+        throw e;
+      }
+      everOpened = true;
       log(`[sniffer] Capturing UDP ${config.udpPorts.join('/')} — ${config.pistes.length} piste(s)`);
       return close;
     },
