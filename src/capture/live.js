@@ -4,7 +4,7 @@
 // Windows: install Npcap first (https://npcap.com). Linux: run as root or
 // setcap cap_net_raw on the node binary.
 
-function startLive({ iface, udpPort }, onPacket) {
+function startLive({ iface, udpPorts }, onPacket) {
   let Cap, decoders;
   try {
     ({ Cap, decoders } = require('cap'));
@@ -14,7 +14,7 @@ function startLive({ iface, udpPort }, onPacket) {
   const cap = new Cap();
   const device = iface || Cap.findDevice();
   const buffer = Buffer.alloc(65535);
-  const linkType = cap.open(device, `udp and port ${udpPort}`, 10 * 1024 * 1024, buffer);
+  const linkType = cap.open(device, `udp and (${udpPorts.map(p => `port ${p}`).join(' or ')})`, 10 * 1024 * 1024, buffer);
   cap.setMinBytes && cap.setMinBytes(0);
 
   cap.on('packet', nbytes => {

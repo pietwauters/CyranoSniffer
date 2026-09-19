@@ -27,8 +27,9 @@ client.on('error',   e  => console.error('[MQTT] Error:', e.message));
 const translator = new Translator({
   publisher: new Publisher(client, log),
   pisteByIp: pisteByIp(config),
-  cmsIp: config.capture.cmsIp,
-  silenceTimeoutMs: config.silenceTimeoutMs,
+  pisteIds: config.pistes.map(p => p.id),
+  softwareTimeoutMs: config.softwareTimeoutMs,
+  apparatusTimeoutMs: config.apparatusTimeoutMs,
   log,
 });
 const onPacket = p => translator.handlePacket(p);
@@ -38,7 +39,7 @@ client.on('connect', () => {
     replay(replayFile, onPacket);
     setTimeout(() => { translator.stop(); client.end(); }, 500);
   } else {
-    startLive({ iface: config.capture.interface, udpPort: config.udpPort }, onPacket);
-    log(`[sniffer] Capturing UDP ${config.udpPort} — ${config.pistes.length} piste(s)`);
+    startLive({ iface: config.capture.interface, udpPorts: config.udpPorts }, onPacket);
+    log(`[sniffer] Capturing UDP ${config.udpPorts.join('/')} — ${config.pistes.length} piste(s)`);
   }
 });
