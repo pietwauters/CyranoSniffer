@@ -10,7 +10,8 @@
 //   open()    -> returns a close() function, or throws
 //   present() -> true while the adapter exists
 function superviseCapture({ open, present, intervalMs = 5000, log = () => {},
-                            isFatal = () => false, onFatal = () => {}, reminderEvery = 12 }) {
+                            isFatal = () => false, onFatal = () => {}, reminderEvery = 12,
+                            isQuiet = () => false }) {
   let close = null;
   let failures = 0;
 
@@ -28,8 +29,11 @@ function superviseCapture({ open, present, intervalMs = 5000, log = () => {},
       failures = 0;
     } catch (e) {
       if (isFatal(e)) { onFatal(e); return; }
-      // Say so on the first failure, then only now and then.
-      if (failures++ % reminderEvery === 0) {
+      // Say so on the first failure, then only now and then. Stay silent while
+      // isQuiet() (e.g. an adapter prompt is on screen); the count still advances.
+      const n = failures++;
+      if (isQuiet()) return;
+      if (n % reminderEvery === 0) {
         console.error(`[capture] ${e.message} — retrying every ${intervalMs / 1000} s`);
       } else {
         log(`[capture] still waiting: ${e.message}`);

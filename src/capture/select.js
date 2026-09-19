@@ -4,12 +4,17 @@
 
 const IPV4 = /^\d+\.\d+\.\d+\.\d+$/;
 
-// Adapters that have an IPv4 address. `devices` is Cap.deviceList().
+// Self-assigned (APIPA) addresses appear on unplugged and virtual adapters and
+// cannot carry the venue's traffic.
+const isLinkLocal = ip => ip.startsWith('169.254.');
+
+// Adapters that have a usable IPv4 address (loopback is kept, for simulators).
+// `devices` is Cap.deviceList().
 function candidateAdapters(devices) {
   const out = [];
   for (const d of devices) {
     for (const a of d.addresses || []) {
-      if (!IPV4.test(a.addr)) continue;
+      if (!IPV4.test(a.addr) || isLinkLocal(a.addr)) continue;
       out.push({ ip: a.addr, name: d.name, description: d.description || '' });
     }
   }

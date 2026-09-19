@@ -58,3 +58,21 @@ test('stop() closes an open capture', async () => {
   sup.stop();
   assert.equal(closed, 1);
 });
+
+test('stays silent while quiet, then reports again', async () => {
+  const lines = [];
+  const err = console.error; console.error = m => lines.push(m);
+  let quiet = true;
+  const sup = superviseCapture({
+    intervalMs: 10, reminderEvery: 1,
+    open: () => { throw new Error('missing'); }, present: () => false,
+    isQuiet: () => quiet,
+  });
+  await wait(50);
+  const whileQuiet = lines.length;
+  quiet = false;
+  await wait(50);
+  sup.stop(); console.error = err;
+  assert.equal(whileQuiet, 0);
+  assert.ok(lines.length > 0);
+});

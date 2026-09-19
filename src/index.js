@@ -54,7 +54,7 @@ if (replayFile) {
   // Capture does not depend on the broker being reachable, and must start
   // exactly once (the MQTT 'connect' event fires again on every reconnect).
   try { loadCap(); } catch (e) { console.error(`[capture] ${e.message}`); process.exit(1); }
-  let everOpened = false, offered = false;
+  let everOpened = false, offered = false, promptOpen = false;
 
   // The configured adapter was never found: show the options and, when a person
   // is at the keyboard, let them pick one and save it. Unattended runs only
@@ -63,18 +63,24 @@ if (replayFile) {
     offered = true;
     const { Cap } = loadCap();
     const list = candidateAdapters(Cap.deviceList());
-    if (list.length === 0) { console.error('[capture] No adapter with an IPv4 address found; waiting.'); return; }
+    if (list.length === 0) { console.error('[capture] No adapter with a usable IPv4 address found; waiting.'); return; }
     console.error(`[capture] Available adapters:\n${formatCandidates(list)}`);
     if (!process.stdin.isTTY) {
       console.error('[capture] Set "capture.interface" in config.json to one of these addresses.');
       return;
     }
+    promptOpen = true; // keep retry messages off the prompt line
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.on('SIGINT', () => { rl.close(); process.emit('SIGINT'); });
     const ask = q => new Promise(resolve => rl.question(q, resolve));
     const chosen = await chooseAdapter(list, ask);
     rl.close();
-    if (!chosen || everOpened) return; // kept waiting, or it appeared meanwhile
+    promptOpen = false;
+    if (everOpened) return; // it appeared while the prompt was open
+    if (!chosen) {
+      console.error(`[capture] Waiting for "${config.capture.interface || 'capture.interface'}" to appear; retrying every ${config.captureRetryMs / 1000} s.`);
+      return;
+    }
     saveInterface(chosen.ip);
     config.capture.interface = chosen.ip;
     console.log(`[capture] Saved capture.interface = ${chosen.ip} to config.json`);
@@ -97,6 +103,7 @@ if (replayFile) {
     },
     present: () => adapterPresent(config.capture.interface),
     intervalMs: config.captureRetryMs,
+    isQuiet: () => promptOpen,
     isFatal: isFatalCaptureError,
     onFatal: e => {
       console.error(`[capture] ${e.message}`);

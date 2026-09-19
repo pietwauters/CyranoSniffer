@@ -13,11 +13,13 @@ const devices = [
   { name: 'wifi', description: 'Wi-Fi', addresses: [{ addr: 'fe80::1' }, { addr: '10.154.1.100' }] },
   { name: 'eth', description: 'Ethernet', addresses: [{ addr: '192.168.0.10' }] },
   { name: 'vbox', description: 'VirtualBox', addresses: [{ addr: '192.168.56.1' }] },
+  { name: 'bt', description: 'Bluetooth PAN', addresses: [{ addr: '169.254.39.30' }] },
+  { name: 'lo', description: 'Loopback', addresses: [{ addr: '127.0.0.1' }] },
 ];
 
-test('lists only adapters that have an IPv4 address', () => {
+test('lists usable IPv4 adapters: no link-local, loopback kept', () => {
   const l = candidateAdapters(devices);
-  assert.deepEqual(l.map(c => c.ip), ['10.154.1.100', '192.168.0.10', '192.168.56.1']);
+  assert.deepEqual(l.map(c => c.ip), ['10.154.1.100', '192.168.0.10', '192.168.56.1', '127.0.0.1']);
   assert.equal(l[1].description, 'Ethernet');
 });
 
