@@ -4,13 +4,24 @@ const test   = require('node:test');
 const assert = require('node:assert');
 const { Publisher }  = require('../src/publisher');
 const { Translator, parseClock } = require('../src/translator');
+const { Presence } = require('../src/presence');
+
+// Fake MQTT connection factory: every client records into `sent`, like the main one.
+function fakeConnect(sent) {
+  return () => ({
+    connected: true,
+    publish: (t, p, o) => sent.push({ t: t.replace('openpiste/1/', ''), p: JSON.parse(p), o }),
+    on() {}, end(force, opts, cb) { if (typeof force === 'function') force(); else if (cb) cb(); },
+  });
+}
 
 const CMS = '10.0.0.10', DEV = '10.0.0.101';
 
 function setup() {
   const sent = [];
   const pub = new Publisher({ publish: (t, p, o) => sent.push({ t: t.replace('openpiste/1/', ''), p: JSON.parse(p), o }) });
-  const tr  = new Translator({ publisher: pub });
+  const presence = new Presence({ brokerUrl: 'mqtt://x', publisher: pub, timeouts: { apparatus: 60000, software: 60000 }, connect: fakeConnect(sent) });
+  const tr  = new Translator({ publisher: pub, presence });
   const fromDev = s => tr.handlePacket({ src: DEV, dst: CMS, payload: Buffer.from(s) });
   const fromCms = s => tr.handlePacket({ src: CMS, dst: DEV, payload: Buffer.from(s) });
   const get = t => sent.filter(m => m.t === t);
@@ -131,7 +142,9 @@ const mini = (piste, state) => `|EFP1.1|INFO|${piste}|${'|'.repeat(10)}${state}|
 function raw() {
   const sent = [];
   const pub = new Publisher({ publish: (t, p) => sent.push({ t, p: JSON.parse(p) }) });
-  const tr = new Translator({ publisher: pub });
+  const presence = new Presence({ brokerUrl: 'mqtt://x', publisher: pub, timeouts: { apparatus: 60000, software: 60000 },
+    connect: () => ({ connected: true, publish: (t, p) => sent.push({ t, p: JSON.parse(p) }), on() {}, end() {} }) });
+  const tr = new Translator({ publisher: pub, presence });
   return { sent, tr, send: (src, dst, s) => tr.handlePacket({ src, dst, payload: Buffer.from(s) }) };
 }
 
@@ -180,10 +193,30 @@ test('piste ids are made safe to use as a topic level', () => {
 test('non-Cyrano frames are logged with source, destination and ports', () => {
   const lines = [];
   const pub = new Publisher({ publish() {} });
-  const tr = new Translator({ publisher: pub, log: l => lines.push(l) });
+  const presence = new Presence({ brokerUrl: 'mqtt://x', publisher: pub, timeouts: { apparatus: 1, software: 1 }, connect: () => ({ connected: true, publish() {}, on() {}, end() {} }) });
+  const tr = new Translator({ publisher: pub, presence, log: l => lines.push(l) });
   tr.handlePacket({ src: '10.0.0.5', dst: '10.0.0.6', srcPort: 50100, dstPort: 50101, payload: Buffer.from("|ENG1|mB223,4:k7.]'tv`q|%||6|1|9:30|03:") });
   tr.handlePacket({ src: '10.0.0.5', dst: '10.0.0.6', payload: Buffer.from('|ENG1|x|') }); // ports unknown (replay)
   tr.stop();
   assert.match(lines[0], /^\[parse\] not EFP 10\.0\.0\.5:50100 -> 10\.0\.0\.6:50101 \(\d+ bytes\): \|ENG1\|/);
   assert.match(lines[1], /10\.0\.0\.5 -> 10\.0\.0\.6 \(8 bytes\)/);
+});
+
+test('device traffic marks the apparatus online; CMS traffic marks the software online', () => {
+  const { tr, fromDev, fromCms, get } = setup();
+  fromCms('|EFP1.1|HELLO|1|efj-eq|%|');
+  fromDev(info('W', 0, 0));
+  tr.stop();
+  assert.equal(get('software/connection')[0].p.online, true);
+  assert.equal(get('apparatus/connection')[0].p.online, true);
+});
+
+test('resync restates the retained topics on the main connection', () => {
+  const out = [];
+  const pub = new Publisher({ publish: (t, p, o) => out.push({ t, o }) });
+  pub.publish('1', 'apparatus/state', { state: 'F' });      // retained
+  pub.publish('1', 'apparatus/control', { command: 'END' }); // not retained
+  out.length = 0;
+  assert.equal(pub.resync(), 1);
+  assert.deepEqual(out.map(m => m.t), ['openpiste/1/apparatus/state']);
 });

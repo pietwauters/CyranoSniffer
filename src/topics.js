@@ -13,7 +13,7 @@ const POLICY = {
   'apparatus/match':      { qos: 1, retain: true  },
   'apparatus/uw2f':       { qos: 1, retain: true  },
   'apparatus/control':    { qos: 1, retain: false },
-  'software/connection':  { qos: 1, retain: false },
+  'software/connection':  { qos: 1, retain: true  },
   'software/fencers':     { qos: 1, retain: false },
   'software/match':       { qos: 1, retain: false },
   'software/score':       { qos: 1, retain: false },

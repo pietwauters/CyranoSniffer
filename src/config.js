@@ -14,7 +14,8 @@ function loadConfig(file = CONFIG_PATH) {
   // to 50100, so capture both.
   config.udpPorts = config.udpPorts || [50100, 50101];
   config.softwareTimeoutMs = config.softwareTimeoutMs || 40000;   // device rule: 40 s without HELLO
-  config.apparatusTimeoutMs = config.apparatusTimeoutMs || 45000; // INFO at least every ~17 s
+  config.siteId = config.siteId || 'site';
+  config.apparatusTimeoutMs = config.apparatusTimeoutMs || 35000; // devices send at least every ~17 s
   config.capture = config.capture || {};
   config.captureRetryMs = config.captureRetryMs || 5000; // how often to retry a missing adapter
   return config;

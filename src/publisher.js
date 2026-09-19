@@ -10,9 +10,11 @@ class Publisher {
     this.log  = log;
     this.seq  = 0;
     this.last = new Map(); // topic -> JSON string of last body
+    this.retained = new Map(); // topic -> { payload, policy } last retained message on the main connection
   }
 
-  publish(pisteId, key, body, { force = false } = {}) {
+  // `client` overrides the connection (presence uses one per piste).
+  publish(pisteId, key, body, { force = false, client = this.mqtt } = {}) {
     const policy = POLICY[key];
     if (!policy) throw new Error(`Unknown OPP2 topic key: ${key}`);
     const topic = topicFor(pisteId, key);
@@ -25,9 +27,18 @@ class Publisher {
     msg.ts = Date.now();
     Object.assign(msg, body);
 
-    this.mqtt.publish(topic, JSON.stringify(msg), policy);
+    const payload = JSON.stringify(msg);
+    client.publish(topic, payload, policy);
+    if (policy.retain && client === this.mqtt) this.retained.set(topic, { payload, policy });
     this.log(`[opp2] ${topic}`);
     return true;
+  }
+
+  // After a broker restart or reconnect the retained state may be gone:
+  // restate the last retained message of every topic.
+  resync() {
+    for (const [topic, { payload, policy }] of this.retained) this.mqtt.publish(topic, payload, policy);
+    return this.retained.size;
   }
 }
 

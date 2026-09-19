@@ -80,13 +80,11 @@ const cleanPiste = s => s.trim().replace(/[+#/\0]/g, '_');
 const isBroadcast = ip => ip === '255.255.255.255' || ip.endsWith('.255') || parseInt(ip, 10) >= 224;
 
 class Translator {
-  constructor({ publisher, softwareTimeoutMs = 40000,
-                apparatusTimeoutMs = 45000, log = () => {} }) {
+  constructor({ publisher, presence, log = () => {} }) {
     this.pub = publisher;
+    this.presence = presence;
     this.learned = new Map();       // device IP -> piste id, from frames that carried one
-    this.timeouts = { apparatus: apparatusTimeoutMs, software: softwareTimeoutMs };
     this.log = log;
-    this.timers = new Map();     // "<role>/<piste>" -> silence timer
     this.lastState = new Map();  // piste -> last apparatus state
     this.hadPCard = new Set();   // pistes whose last uw2f had a P-card
   }
@@ -179,19 +177,9 @@ class Translator {
 
   // ── Presence ────────────────────────────────────────────────────────────
 
-  // Publishes online, and offline after a silence timeout (no broker LWT here).
-  alive(pisteId, role) {
-    const key = `${role}/${pisteId}`;
-    this.pub.publish(pisteId, `${role}/connection`, { online: true });
-    clearTimeout(this.timers.get(key));
-    const t = setTimeout(() => {
-      this.pub.publish(pisteId, `${role}/connection`, { online: false }, { force: true });
-    }, this.timeouts[role]);
-    t.unref && t.unref();
-    this.timers.set(key, t);
-  }
+  alive(pisteId, role) { this.presence.alive(pisteId, role); }
 
-  stop() { this.timers.forEach(clearTimeout); this.timers.clear(); }
+  stop() { this.presence.close(); }
 }
 
 module.exports = { Translator, parseClock };

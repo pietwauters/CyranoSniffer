@@ -13,6 +13,7 @@ const { loadConfig, saveInterface } = require('./config');
 const { candidateAdapters, formatCandidates, chooseAdapter } = require('./capture/select');
 const { Publisher }  = require('./publisher');
 const { Translator } = require('./translator');
+const { Presence }   = require('./presence');
 const { replay }     = require('./capture/replay');
 const { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap } = require('./capture/live');
 const { superviseCapture } = require('./capture/supervisor');
@@ -39,18 +40,28 @@ const client = mqtt.connect(config.mqttBroker);
 client.on('connect', () => log(`[MQTT] Connected to ${config.mqttBroker}`));
 client.on('error',   e  => console.error('[MQTT] Error:', e.message));
 
-const translator = new Translator({
-  publisher: new Publisher(client, log),
-  softwareTimeoutMs: config.softwareTimeoutMs,
-  apparatusTimeoutMs: config.apparatusTimeoutMs,
+// A broker restart or dropped connection can lose retained state: restate it.
+let connectedOnce = false;
+client.on('connect', () => {
+  if (connectedOnce) log(`[MQTT] Reconnected, restated ${publisher.resync()} retained topic(s)`);
+  connectedOnce = true;
+});
+
+const publisher = new Publisher(client, log);
+const presence  = new Presence({
+  brokerUrl: config.mqttBroker,
+  siteId: config.siteId,
+  publisher,
+  timeouts: { apparatus: config.apparatusTimeoutMs, software: config.softwareTimeoutMs },
   log,
 });
+const translator = new Translator({ publisher, presence, log });
 const onPacket = p => translator.handlePacket(p);
 
 if (replayFile) {
   client.once('connect', () => {
     replay(replayFile, onPacket);
-    setTimeout(() => { log.flush(); translator.stop(); client.end(); }, 500);
+    setTimeout(() => { log.flush(); presence.shutdown(() => client.end()); }, 500);
   });
 } else {
   // Capture does not depend on the broker being reachable, and must start
@@ -114,7 +125,10 @@ if (replayFile) {
     },
     log,
   });
-  const shutdown = () => { log.flush(); capture.stop(); translator.stop(); client.end(true, () => process.exit(0)); };
+  const shutdown = () => {
+    log.flush(); capture.stop();
+    presence.shutdown(() => client.end(false, {}, () => process.exit(0))); // marks every piste offline
+  };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 }
