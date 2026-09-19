@@ -62,7 +62,7 @@ function startLive({ iface, udpPorts }, onPacket) {
     if (ip.info.protocol !== decoders.PROTOCOL.IP.UDP) return;
     const udp = decoders.UDP(buffer, ip.offset);
     const payload = Buffer.from(buffer.subarray(udp.offset, ip.offset + ip.info.totallen));
-    onPacket({ src: ip.info.srcaddr, dst: ip.info.dstaddr, payload });
+    onPacket({ src: ip.info.srcaddr, dst: ip.info.dstaddr, srcPort: udp.info.srcport, dstPort: udp.info.dstport, payload });
   });
   return () => cap.close();
 }

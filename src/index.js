@@ -8,6 +8,7 @@
 
 const mqtt = require('mqtt');
 const readline = require('readline');
+const { collapseRepeats } = require('./collapse');
 const { loadConfig, saveInterface } = require('./config');
 const { candidateAdapters, formatCandidates, chooseAdapter } = require('./capture/select');
 const { Publisher }  = require('./publisher');
@@ -18,7 +19,8 @@ const { superviseCapture } = require('./capture/supervisor');
 
 const args    = process.argv.slice(2);
 const verbose = args.includes('--verbose') || args.includes('-v');
-const log     = (...a) => { if (verbose) console.log(...a); };
+// Identical consecutive verbose lines are collapsed into one plus a repeat count.
+const log     = verbose ? collapseRepeats((...a) => console.log(...a)) : Object.assign(() => {}, { flush() {} });
 const replayFile = args.includes('--replay') ? args[args.indexOf('--replay') + 1] : null;
 
 if (args.includes('--list-interfaces')) {
@@ -48,7 +50,7 @@ const onPacket = p => translator.handlePacket(p);
 if (replayFile) {
   client.once('connect', () => {
     replay(replayFile, onPacket);
-    setTimeout(() => { translator.stop(); client.end(); }, 500);
+    setTimeout(() => { log.flush(); translator.stop(); client.end(); }, 500);
   });
 } else {
   // Capture does not depend on the broker being reachable, and must start
@@ -112,7 +114,7 @@ if (replayFile) {
     },
     log,
   });
-  const shutdown = () => { capture.stop(); translator.stop(); client.end(true, () => process.exit(0)); };
+  const shutdown = () => { log.flush(); capture.stop(); translator.stop(); client.end(true, () => process.exit(0)); };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 }

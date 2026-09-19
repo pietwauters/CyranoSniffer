@@ -176,3 +176,14 @@ test('piste ids are made safe to use as a topic level', () => {
   tr.stop();
   assert.ok(sent.some(m => m.t === 'openpiste/a_b_c_/apparatus/state'));
 });
+
+test('non-Cyrano frames are logged with source, destination and ports', () => {
+  const lines = [];
+  const pub = new Publisher({ publish() {} });
+  const tr = new Translator({ publisher: pub, log: l => lines.push(l) });
+  tr.handlePacket({ src: '10.0.0.5', dst: '10.0.0.6', srcPort: 50100, dstPort: 50101, payload: Buffer.from("|ENG1|mB223,4:k7.]'tv`q|%||6|1|9:30|03:") });
+  tr.handlePacket({ src: '10.0.0.5', dst: '10.0.0.6', payload: Buffer.from('|ENG1|x|') }); // ports unknown (replay)
+  tr.stop();
+  assert.match(lines[0], /^\[parse\] not EFP 10\.0\.0\.5:50100 -> 10\.0\.0\.6:50101 \(\d+ bytes\): \|ENG1\|/);
+  assert.match(lines[1], /10\.0\.0\.5 -> 10\.0\.0\.6 \(8 bytes\)/);
+});

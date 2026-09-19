@@ -14,6 +14,8 @@ const STATES = new Set(['F', 'H', 'P', 'W', 'E']);
 const FROM_SOFTWARE = new Set(['HELLO', 'DISP', 'ACK', 'NAK']);
 const FROM_APPARATUS = new Set(['INFO', 'NEXT', 'PREV']);
 
+const addr = (ip, port) => (port ? `${ip}:${port}` : ip);
+
 const int = (s, dflt = 0) => { const n = parseInt(s, 10); return Number.isNaN(n) ? dflt : n; };
 const has = o => Object.values(o).some(v => v !== '');
 
@@ -89,12 +91,13 @@ class Translator {
     this.hadPCard = new Set();   // pistes whose last uw2f had a P-card
   }
 
-  handlePacket({ src, dst, payload }) {
+  handlePacket({ src, dst, srcPort, dstPort, payload }) {
+    const route = `${addr(src, srcPort)} -> ${addr(dst, dstPort)}`;
     const f = parse(payload);
-    if (!f.ok) { this.log(`[parse] not EFP: ${f.raw.slice(0, 40)}`); return; }
+    if (!f.ok) { this.log(`[parse] not EFP ${route} (${payload.length} bytes): ${f.raw.slice(0, 40)}`); return; }
 
     const fromSoftware = FROM_SOFTWARE.has(f.command);
-    if (!fromSoftware && !FROM_APPARATUS.has(f.command)) { this.log(`[cyrano] unknown ${f.command}`); return; }
+    if (!fromSoftware && !FROM_APPARATUS.has(f.command)) { this.log(`[cyrano] unknown ${f.command} ${route}`); return; }
 
     const pisteId = this.resolvePiste(fromSoftware ? dst : src, f.piste);
     if (!pisteId) return;
