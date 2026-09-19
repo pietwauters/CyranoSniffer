@@ -142,6 +142,7 @@ CMS and devices exchange messages. Stop with Ctrl+C. Without `--verbose` it stay
 
 | Symptom | Cause and fix |
 |---|---|
+| `npm : File ...npm.ps1 cannot be loaded because running scripts is disabled` | PowerShell's execution policy. Run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` (no admin needed) and open a new PowerShell. Or use `npm.cmd`, or the classic Command Prompt. |
 | `npm install` fails: `gyp ERR! find VS` or `find Python` | The C++ tools or Python are missing. Redo step 2 and reopen PowerShell. |
 | `Cannot find module 'cap'` or `wpcap.dll` not found | `npm install` failed to build `cap`, or Npcap was installed without WinPcap-compatible mode. Reinstall Npcap with that box ticked, then run `npm install` again. |
 | `No capture device found` | `capture.interface` does not match any adapter's IPv4. Copy the address from `--list-interfaces`. |
