@@ -16,3 +16,7 @@ Status: working translation of INFO, DISP, HELLO, ACK, NAK, NEXT and PREV to OPP
     npm test
 
 Trace format for replay: one packet per line, `<src-ip> <dst-ip> <payload>`.
+
+## License
+
+Apache-2.0. Copyright (c) 2026 Piet Wauters. See [LICENSE](LICENSE).

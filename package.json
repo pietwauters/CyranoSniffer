@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Passive Cyrano (EFP1.1) UDP sniffer that publishes OPP2 to an MQTT broker",
   "main": "src/index.js",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "node src/index.js",
     "replay": "node src/index.js --replay",
