@@ -41,6 +41,17 @@ To test with a device that speaks both protocols, translate anyway:
 
     node src/index.js --force          # or "forceTranslate": true in config.json
 
+`--force` translates the state topics of native pistes too, but still never overwrites the
+native device's own `apparatus/connection`. That retained message is how the sniffer
+recognises a native device, so a forced test run cannot make it invisible afterwards.
+
+A stale `apparatus/connection` with `online: true` and no `device` marker (for example left
+by an old test) looks like a native device. Clear such leftovers with an empty retained
+message: `mosquitto_pub -h <broker> -r -n -t openpiste/<piste>/apparatus/connection`.
+
+Frames that are not Cyrano (EnGarde's own broadcasts, for instance) are summarised in the
+verbose log, one line per sender and destination instead of one per packet.
+
 Windows setup: [docs/windows-install.md](docs/windows-install.md).
 
 Pistes need no configuration: the piste id is read from each Cyrano message.

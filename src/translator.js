@@ -9,6 +9,7 @@
 // and convertOpp2ToCyrano in esp32scoringdeviceMqtt, and level2.md.
 
 const { parse } = require('./parser');
+const { UnknownFrames } = require('./unknown');
 
 const STATES = new Set(['F', 'H', 'P', 'W', 'E']);
 const FROM_SOFTWARE = new Set(['HELLO', 'DISP', 'ACK', 'NAK']);
@@ -91,6 +92,7 @@ class Translator {
     this.pub = publisher;
     this.presence = presence;
     this.suppressed = suppressed;
+    this.unknown = new UnknownFrames({ log: l => this.log(l) });
     this.learned = new Map();       // device IP -> piste id, from frames that carried one
     this.log = log;
     this.lastState = new Map();  // piste -> last apparatus state
@@ -100,7 +102,7 @@ class Translator {
   handlePacket({ src, dst, srcPort, dstPort, payload }) {
     const route = `${addr(src, srcPort)} -> ${addr(dst, dstPort)}`;
     const f = parse(payload);
-    if (!f.ok) { this.log(`[parse] not EFP ${route} (${payload.length} bytes): ${f.raw.slice(0, 40)}`); return; }
+    if (!f.ok) { this.unknown.add({ src, srcPort, dst, dstPort, payload }); return; }
 
     const fromSoftware = FROM_SOFTWARE.has(f.command);
     if (!fromSoftware && !FROM_APPARATUS.has(f.command)) { this.log(`[cyrano] unknown ${f.command} ${route}`); return; }
@@ -191,7 +193,9 @@ class Translator {
     this.presence.alive(pisteId, role);
   }
 
-  stop() { this.presence.close(); }
+  flush() { this.unknown.flush(); }
+
+  stop() { this.flush(); this.presence.close(); }
 }
 
 module.exports = { Translator, parseClock };

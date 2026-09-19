@@ -61,4 +61,12 @@ class NativeWatcher {
   blocks(pisteId) { return !this.synced || this.isNative(pisteId); }
 }
 
-module.exports = { NativeWatcher };
+// Which publishes to hold back. Normally every apparatus/* of a native piste; with
+// --force only its connection status, so a forced test run cannot overwrite the
+// retained message that later tells us a native device is there.
+function makeSuppress(watcher, force) {
+  return (pisteId, key) =>
+    (force ? key === 'apparatus/connection' : key.startsWith('apparatus/')) && watcher.blocks(pisteId);
+}
+
+module.exports = { NativeWatcher, makeSuppress };

@@ -14,7 +14,7 @@ const { candidateAdapters, formatCandidates, chooseAdapter } = require('./captur
 const { Publisher }  = require('./publisher');
 const { Translator } = require('./translator');
 const { Presence }   = require('./presence');
-const { NativeWatcher } = require('./native');
+const { NativeWatcher, makeSuppress } = require('./native');
 const { replay }     = require('./capture/replay');
 const { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap } = require('./capture/live');
 const { superviseCapture } = require('./capture/supervisor');
@@ -58,42 +58,43 @@ const presence  = new Presence({
 });
 // A native OPP2 apparatus on a piste already publishes apparatus/*; a translated
 // copy would fight it. By default we stay quiet there. --force translates anyway
-// (needed to test with a device that speaks both protocols).
+// (needed to test with a device that speaks both protocols), but still leaves the
+// native device's connection status alone so it stays detectable.
 const force = args.includes('--force') || config.forceTranslate === true;
-let watcher = null;
 if (force) {
-  console.log('[native] --force: translating apparatus/* even on pistes with a native OPP2 apparatus.');
-} else {
-  watcher = new NativeWatcher({
-    client,
-    log,
-    onChange: (id, isNative) => {
-      if (isNative) {
-        presence.release(id, 'apparatus'); // clean disconnect: our will must not overwrite the native status
-        publisher.forget(id, 'apparatus/');
-        console.log(`[native] piste ${id}: native OPP2 apparatus is online, not publishing translated apparatus/* (--force overrides)`);
-      } else {
-        publisher.forget(id, 'apparatus/');
-        console.log(`[native] piste ${id}: native OPP2 apparatus is offline, resuming translation`);
-      }
-    },
-  });
-  publisher.suppress = (id, key) => key.startsWith('apparatus/') && watcher.blocks(id);
+  console.log('[native] --force: translating apparatus/* on native OPP2 pistes too (their connection status is left alone).');
 }
-const translator = new Translator({ publisher, presence, suppressed: publisher.suppress || undefined, log });
+const watcher = new NativeWatcher({
+  client,
+  log,
+  onChange: (id, isNative) => {
+    if (isNative) {
+      presence.release(id, 'apparatus'); // clean disconnect: our will must not overwrite the native status
+      publisher.forget(id, force ? 'apparatus/connection' : 'apparatus/');
+      console.log(force
+        ? `[native] piste ${id}: native OPP2 apparatus is online; translating its state anyway (--force), connection status left alone`
+        : `[native] piste ${id}: native OPP2 apparatus is online, not publishing translated apparatus/* (--force overrides)`);
+    } else {
+      publisher.forget(id, force ? 'apparatus/connection' : 'apparatus/');
+      console.log(`[native] piste ${id}: native OPP2 apparatus is offline, translation resumes`);
+    }
+  },
+});
+publisher.suppress = makeSuppress(watcher, force);
+const translator = new Translator({ publisher, presence, suppressed: publisher.suppress, log });
 const onPacket = p => translator.handlePacket(p);
 
 if (replayFile) {
   client.once('connect', async () => {
-    if (watcher) await watcher.start(); // learn which pistes are native before publishing
+    await watcher.start(); // learn which pistes are native before publishing
     replay(replayFile, onPacket);
-    setTimeout(() => { log.flush(); presence.shutdown(() => client.end()); }, 500);
+    setTimeout(() => { translator.flush(); log.flush(); presence.shutdown(() => client.end()); }, 500);
   });
 } else {
   // Capture does not depend on the broker being reachable, and must start
   // exactly once (the MQTT 'connect' event fires again on every reconnect).
   try { loadCap(); } catch (e) { console.error(`[capture] ${e.message}`); process.exit(1); }
-  if (watcher) client.once('connect', () => watcher.start()); // (re)subscribes itself after reconnects
+  client.once('connect', () => watcher.start()); // mqtt.js resubscribes after reconnects
   let everOpened = false, offered = false, promptOpen = false;
 
   // The configured adapter was never found: show the options and, when a person
@@ -153,7 +154,7 @@ if (replayFile) {
     log,
   });
   const shutdown = () => {
-    log.flush(); capture.stop();
+    translator.flush(); log.flush(); capture.stop();
     presence.shutdown(() => client.end(false, {}, () => process.exit(0))); // marks every piste offline
   };
   process.on('SIGINT', shutdown);
