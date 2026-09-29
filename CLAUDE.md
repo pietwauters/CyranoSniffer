@@ -30,7 +30,7 @@ untouched and does not depend on this program; if it crashes, scoring continues.
 | `src/native.js` | Detects pistes with a native OPP2 apparatus; `makeSuppress` rule. |
 | `src/unknown.js`, `src/collapse.js` | Log summarising for non-Cyrano frames and repeated lines. |
 | `src/config.js`, `src/usage.js` | `DEFAULTS` and the CLI option list (both mirrored in README). |
-| `src/capture/` | `live.js` (cap/libpcap), `supervisor.js` (retry, watchdog), `select.js` (adapter prompt), `replay.js`. |
+| `src/capture/` | `live.js` (cap/libpcap), `listen.js` (UDP socket for frames the CMS forwards, `--listen`), `supervisor.js` (retry, watchdog), `select.js` (adapter prompt), `replay.js`. |
 
 ## Invariants to keep
 

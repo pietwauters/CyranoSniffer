@@ -3,6 +3,7 @@
 // CyranoSniffer — passively reads Cyrano (EFP1.1) UDP traffic and publishes OPP2.
 //
 //   node src/index.js [--verbose]            live capture
+//   node src/index.js --listen [ports]       receive Cyrano forwarded by the CMS
 //   node src/index.js --replay traces/x.txt  replay a text trace
 //   node src/index.js --list-interfaces      show capture devices and their IPs
 
@@ -17,6 +18,7 @@ const { Presence }   = require('./presence');
 const { NativeWatcher, makeSuppress } = require('./native');
 const { usageText } = require('./usage');
 const { replay }     = require('./capture/replay');
+const { startListen, parsePorts } = require('./capture/listen');
 const { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap } = require('./capture/live');
 const { superviseCapture } = require('./capture/supervisor');
 
@@ -32,6 +34,19 @@ if (args.includes('--help') || args.includes('-h')) {
 const replayFile = args.includes('--replay') ? args[args.indexOf('--replay') + 1] : null;
 if (args.includes('--replay') && (!replayFile || replayFile.startsWith('-'))) {
   console.error('--replay needs a trace file, e.g. --replay traces/sample.txt');
+  process.exit(1);
+}
+
+// --listen takes an optional port list; without one it uses udpPorts from config.json.
+const listening  = args.includes('--listen');
+const listenArg  = listening ? args[args.indexOf('--listen') + 1] : undefined;
+const listenPorts = listenArg && !listenArg.startsWith('-') ? parsePorts(listenArg) : null;
+if (listenArg && !listenArg.startsWith('-') && !listenPorts) {
+  console.error(`--listen: "${listenArg}" is not a port list, e.g. --listen 50100 or --listen 50100,50101`);
+  process.exit(1);
+}
+if (listening && replayFile) {
+  console.error('--listen and --replay cannot be combined');
   process.exit(1);
 }
 
@@ -100,6 +115,19 @@ if (replayFile) {
     replay(replayFile, onPacket);
     setTimeout(() => { translator.flush(); log.flush(); presence.shutdown(() => client.end()); }, 500);
   });
+} else if (listening) {
+  // Like capture, the socket starts once and does not wait for the broker.
+  client.once('connect', () => watcher.start());
+  const ports = listenPorts || config.udpPorts;
+  let stop = () => {};
+  startListen({ ports }, onPacket, log).then(l => {
+    stop = l.close;
+    console.log(`[listen] Receiving forwarded Cyrano on UDP ${l.ports.join('/')}`);
+  }, e => {
+    console.error(`[listen] ${e.message}`);
+    process.exit(1);
+  });
+  onShutdown(() => stop());
 } else {
   // Capture does not depend on the broker being reachable, and must start
   // exactly once (the MQTT 'connect' event fires again on every reconnect).
@@ -163,9 +191,14 @@ if (replayFile) {
     },
     log,
   });
+  onShutdown(() => capture.stop());
+}
+
+// Ctrl+C / SIGTERM: stop the input, then mark every piste offline before exiting.
+function onShutdown(stopInput) {
   const shutdown = () => {
-    translator.flush(); log.flush(); capture.stop();
-    presence.shutdown(() => client.end(false, {}, () => process.exit(0))); // marks every piste offline
+    translator.flush(); log.flush(); stopInput();
+    presence.shutdown(() => client.end(false, {}, () => process.exit(0)));
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

@@ -26,6 +26,7 @@ the piste id is read from each Cyrano message.
 | Option | Meaning |
 |---|---|
 | `-v`, `--verbose` | Log every published topic, skipped and unknown frames, and capture retries. Identical consecutive lines are collapsed into "(last message repeated N more times)". Without it only warnings, errors and `[native]` notices are printed. |
+| `--listen [ports]` | Receive Cyrano frames that the CMS forwards to this machine, on a plain UDP socket, instead of capturing. `ports` is a comma-separated list (e.g. `50100` or `50100,50101`); without it `udpPorts` is used. Needs no libpcap, Npcap or privileges (for ports above 1024). See [Receiving forwarded Cyrano](#receiving-forwarded-cyrano). |
 | `--replay <file>` | Feed a text trace through the same code, publish it, then exit. Needs a reachable broker, no capture hardware. The pistes are marked offline again at the end. Trace format: one packet per line, `<src-ip> <dst-ip> <payload>`; lines starting with `#` are ignored. See `traces/sample.txt`. |
 | `--list-interfaces` | Print every capture adapter with its IPv4 addresses (including link-local ones), then exit. Needs no config file. |
 | `--force` | Translate `apparatus/*` even on pistes that have a native OPP2 apparatus. Same as `"forceTranslate": true`. See [Pistes that already speak OPP2](#pistes-that-already-speak-opp2). |
@@ -44,11 +45,29 @@ A missing file, or a missing `mqttBroker`, is an error.
 | `siteId` | `"site"` | A name for this venue. Currently used in the MQTT client ids of the per-piste status connections; reserved for the cloud bridge. |
 | `capture.interface` | `""` | The network adapter to capture on: its **IPv4 address** (recommended) or a device name. Empty means "not configured": with a terminal the program lists the adapters and asks you to pick one, which is then saved here; without a terminal it prints the list and keeps retrying. Use `--list-interfaces` to see the choices. |
 | `captureRetryMs` | `5000` | How often to retry while the adapter is missing (cable out, DHCP not finished). The program keeps running and also reopens the capture if the adapter disappears and returns. |
-| `udpPorts` | `[50100, 50101]` | UDP ports to capture, matched on source or destination. The spec says 50100, but the reference device listens on 50101 and sends to 50100. |
+| `udpPorts` | `[50100, 50101]` | UDP ports to capture, matched on source or destination; with `--listen` and no port list, the ports to listen on. The spec says 50100, but the reference device listens on 50101 and sends to 50100. |
 | `apparatusTimeoutMs` | `35000` | A piste's device is marked offline after this long without a frame from it. Devices send at least every ~17 s. |
 | `softwareTimeoutMs` | `40000` | The CMS is marked offline for a piste after this long without a HELLO or DISP. The CMS sends HELLO every 15 s. |
 | `forceTranslate` | `false` | Same as `--force`. |
 | `pistes` | (ignored) | No longer used; piste ids come from the messages. An old `pistes` block only prints a notice and can be deleted. |
+
+## Receiving forwarded Cyrano
+
+EnGarde and FencingTime can forward their Cyrano traffic to another machine. Then no
+capture is needed: point the forward at the machine running the sniffer (for example the
+broker's machine) and start it with `--listen`:
+
+    node src/index.js --listen 50100 --verbose
+
+With `--verbose` every received datagram is logged as `[listen] <sender> -> :<port> (<size>) <start of the frame>`,
+which shows what the CMS actually forwards: device frames (`INFO`, `NEXT`, `PREV`) give
+`apparatus/*`, CMS frames (`DISP`, `HELLO`, `ACK`, `NAK`) give `software/*`.
+
+- The socket only receives; nothing is sent back to the CMS.
+- If the port is already in use on this machine (a CMS or Cyrano device running there),
+  the program stops with a message: forward to another port.
+- Every forwarded frame comes from the CMS's address, so a frame with an empty Piste
+  field cannot be matched to a device by IP. Frames that carry their piste are unaffected.
 
 ## What is published
 
@@ -127,6 +146,7 @@ With `--verbose` each line starts with a tag:
 | `[opp2]` | A topic was published |
 | `[MQTT]` | Broker connection events |
 | `[capture]` | Adapter selection, retries and privilege errors |
+| `[listen]` | With `--listen`: the ports in use, and every received datagram |
 | `[native]` | A piste changed between native OPP2 device and Cyrano-only, or `--force` is on |
 | `[parse]` | A frame that is not Cyrano, for example EnGarde's own `ENG1` broadcasts. One summary line per sender, destination, tag and size (`... 255.255.255.255:50100-50110 (44 bytes, ENG1) x11`). They are ignored. |
 | `[presence …]` | A problem with a per-piste status connection (each distinct error once) |
