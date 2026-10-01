@@ -86,10 +86,27 @@ const cleanPiste = s => s.trim().replace(/[+#/\0]/g, '_');
 
 const isBroadcast = ip => ip === '255.255.255.255' || ip.endsWith('.255') || parseInt(ip, 10) >= 224;
 
+// software/record tells a results portal which competition a piste is on
+// (level2.md §17, §31.4). Cyrano only carries the CMS's own competition name
+// (Compe), so `competitions` maps it to the portal's code; "*" matches any.
+// Without a map no record is published. Cyrano has no bout list, so `bouts`
+// is empty, and the slot is identified by competition, phase and poule.
+function recordBody(f, competitions) {
+  const code = competitions[f.competition.trim()] || competitions['*'];
+  if (!code) return null;
+  const type = phaseType(f.poule);
+  const body = { slot_id: [code, f.phase, f.poule].join('/'), phase_type: type, competition: code, bouts: [] };
+  if (f.poule) body.label = type === 'pool' ? `Pool ${f.poule}` : f.poule;
+  return body;
+}
+
 class Translator {
   // `suppressed(pisteId, key)` -> true while a native OPP2 apparatus owns apparatus/*.
-  constructor({ publisher, presence, suppressed = () => false, log = () => {} }) {
+  // `competitions`: Cyrano Compe -> competition code, for software/record (null: none).
+  constructor({ publisher, presence, suppressed = () => false, competitions = null, log = () => {} }) {
     this.pub = publisher;
+    this.competitions = competitions;
+    this.unmapped = new Set();   // Compe values already warned about
     this.presence = presence;
     this.suppressed = suppressed;
     this.unknown = new UnknownFrames({ log: l => this.log(l) });
@@ -134,6 +151,7 @@ class Translator {
     if (fencers) this.pub.publish(id, 'software/fencers', fencers);
     const match = matchBody(f);
     if (match) this.pub.publish(id, 'software/match', match);
+    this.record(id, f);
     this.pub.publish(id, 'software/score', scoreBody(f));
     const clock = clockBody(f, false); // software/clock is always paused
     if (clock) this.pub.publish(id, 'software/clock', clock);
@@ -173,6 +191,7 @@ class Translator {
     if (fencers) this.pub.publish(id, 'apparatus/fencers', fencers);
     const match = matchBody(f);
     if (match) this.pub.publish(id, 'apparatus/match', match);
+    this.record(id, f); // the CMS's DISP may not be forwarded; the device echoes Compe too
 
     // P-cards only: Cyrano carries no UW2F timer, so time_ms/time are omitted
     // (a deliberate deviation from OPP2's "at least one of" rule). Published
@@ -182,6 +201,16 @@ class Translator {
     if (any || this.hadPCard.has(id)) {
       this.pub.publish(id, 'apparatus/uw2f', p);
       if (any) this.hadPCard.add(id); else this.hadPCard.delete(id);
+    }
+  }
+
+  record(id, f) {
+    if (!this.competitions || (!f.competition && !f.poule)) return;
+    const body = recordBody(f, this.competitions);
+    if (body) { this.pub.publish(id, 'software/record', body); return; }
+    if (!this.unmapped.has(f.competition)) {
+      this.unmapped.add(f.competition);
+      console.warn(`[record] Competition "${f.competition}" (piste ${id}) is not in "competitions" in config.json; its pistes will not show on the results site.`);
     }
   }
 
@@ -198,4 +227,4 @@ class Translator {
   stop() { this.flush(); this.presence.close(); }
 }
 
-module.exports = { Translator, parseClock };
+module.exports = { Translator, parseClock, recordBody };

@@ -21,6 +21,8 @@ const { replay }     = require('./capture/replay');
 const { startListen, parsePorts } = require('./capture/listen');
 const { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap } = require('./capture/live');
 const { superviseCapture } = require('./capture/supervisor');
+const { setTournament } = require('./topics');
+const { Uploader } = require('./upload');
 
 const args    = process.argv.slice(2);
 const verbose = args.includes('--verbose') || args.includes('-v');
@@ -57,6 +59,12 @@ if (args.includes('--list-interfaces')) {
 
 let config;
 try { config = loadConfig(); } catch (e) { console.error('[config]', e.message); process.exit(1); }
+
+setTournament(config.tournament);
+if (config.tournament) console.log(`[config] Publishing under openpiste/${config.tournament}`);
+if (config.tournament && !config.competitions) {
+  console.warn('[config] No "competitions" in config.json: pistes will not show on any competition page of the results site.');
+}
 
 if (config.pistes) {
   console.warn('[config] "pistes" is no longer used: piste ids are read from the Cyrano messages. You can delete it.');
@@ -106,7 +114,7 @@ const watcher = new NativeWatcher({
   },
 });
 publisher.suppress = makeSuppress(watcher, force);
-const translator = new Translator({ publisher, presence, suppressed: publisher.suppress, log });
+const translator = new Translator({ publisher, presence, suppressed: publisher.suppress, competitions: config.competitions || null, log });
 const onPacket = p => translator.handlePacket(p);
 
 if (replayFile) {
@@ -194,9 +202,16 @@ if (replayFile) {
   onShutdown(() => capture.stop());
 }
 
+// FIE XML exports go to the results site alongside the live data (not in a replay).
+const uploader = config.upload && !replayFile
+  ? new Uploader({ ...config.upload, tournament: config.tournament, intervalMs: config.uploadIntervalMs, log })
+  : null;
+if (uploader) uploader.start();
+
 // Ctrl+C / SIGTERM: stop the input, then mark every piste offline before exiting.
 function onShutdown(stopInput) {
   const shutdown = () => {
+    if (uploader) uploader.stop();
     translator.flush(); log.flush(); stopInput();
     presence.shutdown(() => client.end(false, {}, () => process.exit(0)));
   };

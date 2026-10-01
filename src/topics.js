@@ -19,8 +19,16 @@ const POLICY = {
   'software/score':       { qos: 1, retain: false },
   'software/clock':       { qos: 0, retain: false },
   'software/control':     { qos: 1, retain: false },
+  'software/record':      { qos: 1, retain: true  },
 };
 
-const topicFor = (pisteId, key) => `openpiste/${pisteId}/${key}`;
+// Every topic starts with this root: "openpiste" on a venue broker, or
+// "openpiste/{NOC}/{yyyy}/{mm}/{dd}/{tournament}" when publishing straight to
+// the cloud broker (config "tournament", level2.md §31.2). Set once at start-up.
+let root = 'openpiste';
+const setTournament = t => { root = t ? `openpiste/${t}` : 'openpiste'; };
+const topicRoot = () => root;
 
-module.exports = { POLICY, topicFor };
+const topicFor = (pisteId, key) => `${root}/${pisteId}/${key}`;
+
+module.exports = { POLICY, topicFor, topicRoot, setTournament };

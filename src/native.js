@@ -9,8 +9,7 @@
 // ({"online":false}) and offline messages never count.
 
 const { DEVICE } = require('./presence');
-
-const TOPIC = 'openpiste/+/apparatus/connection';
+const { topicRoot } = require('./topics');
 
 class NativeWatcher {
   // `client` is the main MQTT connection. `onChange(pisteId, isNative)` fires on transitions.
@@ -26,9 +25,10 @@ class NativeWatcher {
   start(graceMs = 300) {
     this.client.on('message', (topic, payload) => this.handle(topic, payload));
     // Retained state is delivered right after the SUBACK; give it a moment.
-    this.client.subscribe(TOPIC, { qos: 1 }, (err, granted) => {
+    const topic = `${topicRoot()}/+/apparatus/connection`;
+    this.client.subscribe(topic, { qos: 1 }, (err, granted) => {
       if (err || (granted && granted[0] && granted[0].qos === 128)) {
-        console.warn(`[native] Could not subscribe to ${TOPIC}; assuming no native OPP2 devices.`);
+        console.warn(`[native] Could not subscribe to ${topic}; assuming no native OPP2 devices.`);
         this.markSynced(0);
       } else {
         this.markSynced(graceMs);
@@ -44,7 +44,9 @@ class NativeWatcher {
   ready() { return this.readyPromise; }
 
   handle(topic, payload) {
-    const m = /^openpiste\/([^/]+)\/apparatus\/connection$/.exec(topic);
+    const root = `${topicRoot()}/`;
+    if (!topic.startsWith(root)) return;
+    const m = /^([^/]+)\/apparatus\/connection$/.exec(topic.slice(root.length));
     if (!m) return;
     let d;
     try { d = JSON.parse(payload.toString()); } catch (e) { return; }

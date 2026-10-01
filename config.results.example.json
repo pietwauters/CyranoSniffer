@@ -1,0 +1,11 @@
+{
+  "mqttBroker": "mqtts://venue-ghent-test:PASSWORD@mqtt.openpiste.org:8883",
+  "siteId": "ghent-test",
+  "tournament": "BEL/2026/10/04/ghent-test",
+  "competitions": { "*": "senior-m-foil" },
+  "udpPorts": [50201, 50202, 50203, 50204],
+  "upload": {
+    "folder": "C:\\OpenPiste\\export",
+    "token": "opr_PASTE_THE_TOKEN_HERE"
+  }
+}

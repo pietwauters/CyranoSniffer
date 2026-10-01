@@ -13,6 +13,7 @@
 
 const mqtt   = require('mqtt');
 const crypto = require('crypto');
+const { topicFor } = require('./topics');
 
 const DEVICE = 'Cyrano device (via CyranoSniffer)';
 
@@ -28,7 +29,7 @@ class Presence {
     this.entries = new Map(); // "<role>/<piste>" -> { client, role, pisteId, online, timer }
   }
 
-  static topic(pisteId, role) { return `openpiste/${pisteId}/${role}/connection`; }
+  static topic(pisteId, role) { return topicFor(pisteId, `${role}/connection`); }
 
   bodyFor(role, online) {
     if (!online) return { online: false };

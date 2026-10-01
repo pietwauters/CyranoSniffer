@@ -1,6 +1,6 @@
 'use strict';
 
-const { POLICY, topicFor } = require('./topics');
+const { POLICY, topicFor, topicRoot } = require('./topics');
 
 // Publishes OPP2 messages, only when the body changed since last time.
 // Adds protocol/version/ts, and a per-process seq on QoS 1 topics.
@@ -51,7 +51,7 @@ class Publisher {
   // Forget what we published under `prefix` (e.g. "apparatus/") for a piste, so
   // the next frame republishes it in full, and resync() does not restate it.
   forget(pisteId, prefix) {
-    const start = `openpiste/${pisteId}/${prefix}`;
+    const start = `${topicRoot()}/${pisteId}/${prefix}`;
     for (const map of [this.last, this.retained]) {
       for (const topic of [...map.keys()]) if (topic.startsWith(start)) map.delete(topic);
     }
