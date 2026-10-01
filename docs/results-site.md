@@ -48,6 +48,10 @@ Copy `config.results.example.json` to `config.json` in the same folder and fill 
 }
 ```
 
+- **`mqttBroker`**: the broker user and password go into this address. A password with
+  `/`, `+`, `=`, `@` or `:` in it must have those written as `%2F`, `%2B`, `%3D`, `%40`, `%3A`
+  (a bare `/` makes the program connect to the wrong host). Passwords of only letters and
+  digits avoid this.
 - **`udpPorts`**: one port per piste, the same ports you enter in the CMS's Cyrano forwarding.
   Use ports above 1024 that the CMS itself doesn't use (not 50100 or 50101).
 - **`competitions`**: `"*"` sends every piste to one competition. With more than one
