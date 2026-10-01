@@ -39,7 +39,6 @@ Copy `config.results.example.json` to `config.json` in the same folder and fill 
   "mqttBroker": "mqtts://venue-ghent-test:PASSWORD@mqtt.openpiste.org:8883",
   "siteId": "ghent-test",
   "tournament": "BEL/2026/10/04/ghent-test",
-  "competitions": { "*": "senior-m-foil" },
   "udpPorts": [50201, 50202, 50203, 50204],
   "upload": {
     "folder": "C:\\OpenPiste\\export",
@@ -54,11 +53,6 @@ Copy `config.results.example.json` to `config.json` in the same folder and fill 
   digits avoid this.
 - **`udpPorts`**: one port per piste, the same ports you enter in the CMS's Cyrano forwarding.
   Use ports above 1024 that the CMS itself doesn't use (not 50100 or 50101).
-- **`competitions`**: `"*"` sends every piste to one competition. With more than one
-  competition, list the CMS's own competition names instead, for example
-  `{ "HF": "senior-m-foil", "DE": "senior-f-epee" }`. The program's log shows both sides:
-  a `[record]` warning names any CMS value that isn't listed, and each `[upload]` line names
-  the code the site gave the competition.
 - **`upload.folder`**: the folder the CMS exports FIE XML files to. Use one file per competition
   and overwrite it on every export. Backslashes are written twice in JSON.
 
@@ -100,7 +94,23 @@ phone over mobile data rather than the venue Wi-Fi.
 | `[MQTT] Error: Connection refused: Not authorized` | Wrong broker user or password in `mqttBroker`. |
 | `[MQTT] Error: … ECONNREFUSED`, `ETIMEDOUT` or `ENOTFOUND` | No internet, or the venue network blocks outgoing port 8883. |
 | `[listen] UDP port … is already in use` | Another program uses that port: pick other ports, in both the CMS and `udpPorts`. |
-| `[record] Competition "…" is not in "competitions"` | Add that name to `competitions`, then restart. |
 | `[upload] … the upload token was refused` | The token is mistyped, expired or revoked. |
 | `[upload] … rejected: …` | The site can't read that file. The message says why; the file is sent again when it changes. |
-| Pistes on the site, but not on the competition page | `competitions` doesn't match: see the `[record]` warning. |
+| Pistes on the tournament page, but not on a competition's page | The CMS's competition name doesn't match the site's code. See "Pistes per competition" below. |
+
+## Pistes per competition (optional)
+
+Every piste is shown on the tournament's page. A piste also appears on a competition's own page
+when the CMS's name for the competition, in lower case with hyphens (`HF` → `hf`,
+`FM_PALMA_EQ` → `fm-palma-eq`), is the code the site has for that competition. The code is
+in each upload line: `[upload] HF.xml -> senior-m-foil: …`.
+
+When they differ, add a line to `config.json` that maps the CMS's name to the site's code, and
+restart:
+
+```json
+"competitions": { "HF": "senior-m-foil" }
+```
+
+`"*"` stands for any name: `{ "*": "senior-m-foil" }` puts every piste on one competition. Run
+with `--verbose` to see the CMS's names in the `[listen]` lines (the fourth field of each frame).

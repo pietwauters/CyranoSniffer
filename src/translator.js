@@ -86,13 +86,20 @@ const cleanPiste = s => s.trim().replace(/[+#/\0]/g, '_');
 
 const isBroadcast = ip => ip === '255.255.255.255' || ip.endsWith('.255') || parseInt(ip, 10) >= 224;
 
-// software/record tells a results portal which competition a piste is on
-// (level2.md §17, §31.4). Cyrano only carries the CMS's own competition name
-// (Compe), so `competitions` maps it to the portal's code; "*" matches any.
-// Without a map no record is published. Cyrano has no bout list, so `bouts`
-// is empty, and the slot is identified by competition, phase and poule.
-function recordBody(f, competitions) {
-  const code = competitions[f.competition.trim()] || competitions['*'];
+// software/record tells a results site which competition a piste is on
+// (level2.md §17, §31.4). The competition is the CMS's own name for it (Cyrano
+// Compe) in code form: "HF" -> "hf", "FM_PALMA_EQ" -> "fm-palma-eq". The site
+// places a piste under a competition only if it has one with exactly that
+// code; otherwise the piste is still shown with its tournament. `competitions`
+// (optional) maps a Compe value to another code; "*" matches any value.
+// Cyrano has no bout list, so `bouts` is empty, and the slot is identified by
+// competition, phase and poule.
+const toCode = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64).replace(/-+$/, '');
+
+function recordBody(f, competitions = {}) {
+  const compe = f.competition.trim();
+  const code = competitions[compe] || competitions['*'] || toCode(compe);
   if (!code) return null;
   const type = phaseType(f.poule);
   const body = { slot_id: [code, f.phase, f.poule].join('/'), phase_type: type, competition: code, bouts: [] };
@@ -102,11 +109,10 @@ function recordBody(f, competitions) {
 
 class Translator {
   // `suppressed(pisteId, key)` -> true while a native OPP2 apparatus owns apparatus/*.
-  // `competitions`: Cyrano Compe -> competition code, for software/record (null: none).
-  constructor({ publisher, presence, suppressed = () => false, competitions = null, log = () => {} }) {
+  // `competitions`: optional Cyrano Compe -> competition code overrides, for software/record.
+  constructor({ publisher, presence, suppressed = () => false, competitions = {}, log = () => {} }) {
     this.pub = publisher;
-    this.competitions = competitions;
-    this.unmapped = new Set();   // Compe values already warned about
+    this.competitions = competitions || {};
     this.presence = presence;
     this.suppressed = suppressed;
     this.unknown = new UnknownFrames({ log: l => this.log(l) });
@@ -205,13 +211,9 @@ class Translator {
   }
 
   record(id, f) {
-    if (!this.competitions || (!f.competition && !f.poule)) return;
+    if (!f.competition && !f.poule) return; // an incomplete frame says nothing about the slot
     const body = recordBody(f, this.competitions);
-    if (body) { this.pub.publish(id, 'software/record', body); return; }
-    if (!this.unmapped.has(f.competition)) {
-      this.unmapped.add(f.competition);
-      console.warn(`[record] Competition "${f.competition}" (piste ${id}) is not in "competitions" in config.json; its pistes will not show on the results site.`);
-    }
+    if (body) this.pub.publish(id, 'software/record', body);
   }
 
   // ── Presence ────────────────────────────────────────────────────────────
@@ -227,4 +229,4 @@ class Translator {
   stop() { this.flush(); this.presence.close(); }
 }
 
-module.exports = { Translator, parseClock, recordBody };
+module.exports = { Translator, parseClock, recordBody, toCode };

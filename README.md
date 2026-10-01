@@ -53,7 +53,7 @@ A missing file, or a missing `mqttBroker`, is an error.
 | `softwareTimeoutMs` | `40000` | The CMS is marked offline for a piste after this long without a HELLO or DISP. The CMS sends HELLO every 15 s. |
 | `forceTranslate` | `false` | Same as `--force`. |
 | `tournament` | (none) | Publish straight to a cloud broker for a results site: every topic goes under `openpiste/{tournament}/`, e.g. `"BEL/2026/10/04/ghent-test"` (country, first day of the event, id). Without it topics are `openpiste/{piste}/…` as on a venue broker. See [Results site](#results-site). |
-| `competitions` | (none) | Maps the CMS's competition name (Cyrano `Compe` field) to the results site's competition code, e.g. `{ "HF": "senior-m-foil" }`; `"*"` matches any name. Turns on `software/record`, which tells the site which competition a piste is on. |
+| `competitions` | (none) | Optional. Every piste publishes `software/record` with the CMS's competition name (Cyrano `Compe`) in code form as its competition (`HF` becomes `hf`); a results site places the piste under a competition only if it has one with exactly that code, and otherwise shows it with its tournament. This maps a `Compe` value to another code, e.g. `{ "HF": "senior-m-foil" }`; `"*"` matches any value. |
 | `upload.folder` | (none) | Folder the CMS exports FIE XML files to. Each `.xml` file is uploaded to the results site once it has stopped changing, and again whenever its content changes. Needs `tournament`. |
 | `upload.token` | (none) | The upload token for the results site. |
 | `upload.url` | `https://results.openpiste.org/api/upload` | Where to upload. |
@@ -80,17 +80,17 @@ which shows what the CMS actually forwards: device frames (`INFO`, `NEXT`, `PREV
 
 ## Results site
 
-With `tournament`, `competitions` and `upload` set, this one program feeds a results site such
+With `tournament` and `upload` set, this one program feeds a results site such
 as results.openpiste.org: the live pistes go to its cloud broker, the CMS's FIE XML exports to its
 upload address. See [docs/results-site.md](docs/results-site.md) for the whole setup.
 
 - `mqttBroker` is then the cloud broker, with the venue's own user, e.g.
   `mqtts://venue-ghent-test:<password>@mqtt.openpiste.org:8883`. That user needs read and write
   access under `openpiste/{tournament}/#` (read for the native-device check).
-- A piste appears on a competition page only once its Cyrano `Compe` value is mapped in
-  `competitions`. An unmapped value is logged once as a `[record]` warning.
-- An upload's log line names the competition code the site derived from the file
-  (`[upload] HF.xml -> senior-m-foil: …`); put that code in `competitions`.
+- Every piste appears on the tournament's page with no further setting. It also appears on a
+  competition's page when its `Compe` value, in code form, is that competition's code on the
+  site. An upload's log line names the code the site gave the competition
+  (`[upload] HF.xml -> senior-m-foil: …`); `competitions` can map `Compe` to it.
 
 ## What is published
 
@@ -100,9 +100,9 @@ A frame that leaves it empty uses the piste last seen from the same device IP.
 
 | Cyrano frame | Published as OPP2 |
 |---|---|
-| `INFO` (device to CMS) | `apparatus/state`, `score`, `lights`, `clock`, `fencers`, `match`; `apparatus/control` `END` when the state becomes `E`; `apparatus/uw2f` when a P-card is issued or cleared; `software/record` with `competitions` (the CMS's DISP may not be forwarded) |
+| `INFO` (device to CMS) | `apparatus/state`, `score`, `lights`, `clock`, `fencers`, `match`; `apparatus/control` `END` when the state becomes `E`; `apparatus/uw2f` when a P-card is issued or cleared; `software/record` (the CMS's DISP may not be forwarded) |
 | `NEXT`, `PREV` (device to CMS) | `apparatus/control` |
-| `DISP` (CMS to device) | `software/fencers`, `match`, `score`, `clock`; `software/record` with `competitions` |
+| `DISP` (CMS to device) | `software/fencers`, `match`, `score`, `clock`, `software/record` |
 | `HELLO` (CMS to device) | `software/connection` |
 | `ACK`, `NAK` (CMS to device) | `software/control` |
 
@@ -173,7 +173,6 @@ With `--verbose` each line starts with a tag:
 | `[native]` | A piste changed between native OPP2 device and Cyrano-only, or `--force` is on |
 | `[parse]` | A frame that is not Cyrano, for example EnGarde's own `ENG1` broadcasts. One summary line per sender, destination, tag and size (`... 255.255.255.255:50100-50110 (44 bytes, ENG1) x11`). They are ignored. |
 | `[presence …]` | A problem with a per-piste status connection (each distinct error once) |
-| `[record]` | A Cyrano competition name that is not in `competitions` (once per name) |
 | `[upload]` | An FIE XML file uploaded (with the competition code and counts), rejected, or to be retried |
 
 ## Linux

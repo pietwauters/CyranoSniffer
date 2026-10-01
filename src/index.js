@@ -73,9 +73,6 @@ try { config = loadConfig(); } catch (e) { console.error('[config]', e.message);
 
 setTournament(config.tournament);
 if (config.tournament) console.log(`[config] Publishing under openpiste/${config.tournament}`);
-if (config.tournament && !config.competitions) {
-  console.warn('[config] No "competitions" in config.json: pistes will not show on any competition page of the results site.');
-}
 
 if (config.pistes) {
   console.warn('[config] "pistes" is no longer used: piste ids are read from the Cyrano messages. You can delete it.');
@@ -125,7 +122,7 @@ const watcher = new NativeWatcher({
   },
 });
 publisher.suppress = makeSuppress(watcher, force);
-const translator = new Translator({ publisher, presence, suppressed: publisher.suppress, competitions: config.competitions || null, log });
+const translator = new Translator({ publisher, presence, suppressed: publisher.suppress, competitions: config.competitions, log });
 const trace = traceFile ? openTrace(traceFile) : null;
 if (trace) console.log(`[trace] Writing every received frame to ${traceFile}`);
 const onPacket = p => { if (trace) trace(p); translator.handlePacket(p); };

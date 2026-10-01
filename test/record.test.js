@@ -25,38 +25,35 @@ function setup(competitions) {
   return { fromDev, records };
 }
 
-test('recordBody maps Compe to a competition code, pool and tableau labels', () => {
+test('recordBody: Compe in code form by default, overrides from competitions', () => {
   const f = { competition: 'HF ', phase: '1', poule: '3' };
-  assert.deepEqual(recordBody(f, { HF: 'senior-m-foil' }),
-    { slot_id: 'senior-m-foil/1/3', phase_type: 'pool', competition: 'senior-m-foil', bouts: [], label: 'Pool 3' });
-  assert.equal(recordBody({ competition: 'X', phase: '2', poule: 'A32' }, { '*': 'open-f-epee' }).label, 'A32');
-  assert.equal(recordBody({ competition: 'X', phase: '2', poule: 'A32' }, { HF: 'senior-m-foil' }), null);
+  assert.deepEqual(recordBody(f),
+    { slot_id: 'hf/1/3', phase_type: 'pool', competition: 'hf', bouts: [], label: 'Pool 3' });
+  assert.equal(recordBody({ competition: 'FM_PALMA_EQ', phase: '2', poule: 'A32' }).competition, 'fm-palma-eq');
+  assert.equal(recordBody({ competition: 'X', phase: '2', poule: 'A32' }).label, 'A32');
+  assert.equal(recordBody(f, { HF: 'senior-m-foil' }).competition, 'senior-m-foil');
+  assert.equal(recordBody(f, { '*': 'open-f-epee' }).competition, 'open-f-epee');
+  assert.equal(recordBody(f, { HF: 'senior-m-foil', '*': 'open-f-epee' }).competition, 'senior-m-foil');
+  assert.equal(recordBody({ competition: '', phase: '1', poule: '3' }), null); // nothing to name it by
 });
 
-test('a mapped competition publishes a retained software/record, once per change', () => {
-  const { fromDev, records } = setup({ HF: 'senior-m-foil' });
+test('every piste publishes a retained software/record without configuration, once per change', () => {
+  const { fromDev, records } = setup(undefined);
   fromDev(info('3', 'HF', '1', '2'));
   fromDev(info('3', 'HF', '1', '2'));
   assert.equal(records().length, 1);
   const [r] = records();
   assert.equal(r.t, 'openpiste/3/software/record');
-  assert.equal(r.p.competition, 'senior-m-foil');
+  assert.equal(r.p.competition, 'hf');
   assert.deepEqual(r.o, { qos: 1, retain: true });
   fromDev(info('3', 'HF', '2', 'A16'));
   assert.equal(records().length, 2);
 });
 
-test('no map, or an unmapped Compe, publishes no record', (t) => {
-  const warned = [];
-  t.mock.method(console, 'warn', m => warned.push(m));
-  const none = setup(null);
-  none.fromDev(info('3', 'HF', '1', '2'));
-  assert.equal(none.records().length, 0);
-  const unmapped = setup({ DE: 'senior-f-epee' });
-  unmapped.fromDev(info('3', 'HF', '1', '2'));
-  unmapped.fromDev(info('4', 'HF', '1', '3'));
-  assert.equal(unmapped.records().length, 0);
-  assert.equal(warned.length, 1); // one warning per Compe value
+test('a frame without Compe or poule publishes no record', () => {
+  const { fromDev, records } = setup({ '*': 'senior-m-foil' });
+  fromDev(info('3', '', '', ''));
+  assert.equal(records().length, 0);
 });
 
 test('a tournament puts every topic under its cloud path', (t) => {
