@@ -22,6 +22,7 @@ const { startListen, parsePorts } = require('./capture/listen');
 const { startLive, listInterfaces, adapterPresent, isFatalCaptureError, loadCap } = require('./capture/live');
 const { superviseCapture } = require('./capture/supervisor');
 const { setTournament } = require('./topics');
+const { openTrace } = require('./capture/trace');
 const { Uploader } = require('./upload');
 
 const args    = process.argv.slice(2);
@@ -49,6 +50,16 @@ if (listenArg && !listenArg.startsWith('-') && !listenPorts) {
 }
 if (listening && replayFile) {
   console.error('--listen and --replay cannot be combined');
+  process.exit(1);
+}
+
+const traceFile = args.includes('--trace') ? args[args.indexOf('--trace') + 1] : null;
+if (args.includes('--trace') && (!traceFile || traceFile.startsWith('-'))) {
+  console.error('--trace needs a file name, e.g. --trace capture.txt');
+  process.exit(1);
+}
+if (traceFile && replayFile) {
+  console.error('--trace and --replay cannot be combined');
   process.exit(1);
 }
 
@@ -115,7 +126,9 @@ const watcher = new NativeWatcher({
 });
 publisher.suppress = makeSuppress(watcher, force);
 const translator = new Translator({ publisher, presence, suppressed: publisher.suppress, competitions: config.competitions || null, log });
-const onPacket = p => translator.handlePacket(p);
+const trace = traceFile ? openTrace(traceFile) : null;
+if (trace) console.log(`[trace] Writing every received frame to ${traceFile}`);
+const onPacket = p => { if (trace) trace(p); translator.handlePacket(p); };
 
 if (replayFile) {
   client.once('connect', async () => {

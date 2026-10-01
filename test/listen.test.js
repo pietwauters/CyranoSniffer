@@ -43,3 +43,19 @@ test('a port in use gives a readable error', async () => {
   );
   first.close();
 });
+
+test('--trace writes frames that --replay reads back unchanged', (t) => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const { openTrace } = require('../src/capture/trace');
+  const { replay } = require('../src/capture/replay');
+  const file = path.join(os.tmpdir(), `cs-trace-${process.pid}.txt`);
+  t.after(() => fs.rmSync(file, { force: true }));
+  const frame = '|EFP1.1|DISP|3|HF|1|2|1|1|10:30|3:00|I|F|N|W|1|Dupré|FRA|%|%|%|';
+  const trace = openTrace(file);
+  trace({ src: '127.0.0.1', dst: 'local', dstPort: 50203, payload: Buffer.from(frame + '\r\n', 'latin1') });
+  const back = [];
+  replay(file, p => back.push(p));
+  assert.equal(back.length, 1);
+  assert.equal(back[0].dst, 'local:50203');
+  assert.equal(back[0].payload.toString('latin1'), frame);
+});

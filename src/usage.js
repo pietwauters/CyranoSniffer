@@ -6,6 +6,7 @@ const OPTIONS = [
   { flag: '--verbose', alias: '-v', text: 'Log every published topic, skipped and unknown frames, and capture retries' },
   { flag: '--listen', arg: '[ports]', text: 'Receive Cyrano frames forwarded by the CMS on these UDP ports (default: udpPorts) instead of capturing' },
   { flag: '--replay', arg: '<file>', text: 'Feed a text trace through the same code, publish, then exit (no capture hardware needed)' },
+  { flag: '--trace', arg: '<file>', text: 'Also append every received frame to this file, in the format --replay reads' },
   { flag: '--list-interfaces', text: 'Print the capture adapters and their IPv4 addresses, then exit' },
   { flag: '--force', text: 'Translate apparatus/* even on pistes with a native OPP2 apparatus (same as "forceTranslate": true)' },
   { flag: '--help', alias: '-h', text: 'Show this help' },
