@@ -211,7 +211,7 @@ class Translator {
   }
 
   record(id, f) {
-    if (!f.competition && !f.poule) return; // an incomplete frame says nothing about the slot
+    if (!f.poule) return; // e.g. the CMS's empty DISP between two bouts: it says nothing about the slot
     const body = recordBody(f, this.competitions);
     if (body) this.pub.publish(id, 'software/record', body);
   }

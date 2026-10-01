@@ -50,10 +50,13 @@ test('every piste publishes a retained software/record without configuration, on
   assert.equal(records().length, 2);
 });
 
-test('a frame without Compe or poule publishes no record', () => {
+test('a frame without a poule publishes no record (the CMS\'s empty DISP between bouts)', () => {
   const { fromDev, records } = setup({ '*': 'senior-m-foil' });
   fromDev(info('3', '', '', ''));
+  fromDev(info('3', 'nokauzow', '1', ''));
   assert.equal(records().length, 0);
+  fromDev(info('3', 'nokauzow', '1', '2'));
+  assert.equal(records()[0].p.label, 'Pool 2');
 });
 
 test('a tournament puts every topic under its cloud path', (t) => {
