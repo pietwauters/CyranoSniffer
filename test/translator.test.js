@@ -140,6 +140,22 @@ test('P-cards publish uw2f without time, and clear when removed', () => {
   assert.equal(u[0].o.retain, true);
 });
 
+test('Cyrano 1.0 (EFP1) INFO publishes like 1.1, without uw2f', () => {
+  const { tr, fromDev, fromCms, get } = setup();
+  fromCms('|EFP1|HELLO|1|efj-eq|%|');
+  fromDev(info('F', 4, 2, { lLight: 1, clock: '1:45' }).replace('|EFP1.1|', '|EFP1|'));
+  fromDev('|EFP1|NEXT|1|efj-eq|%|');
+  tr.stop();
+  assert.equal(get('apparatus/state')[0].p.state, 'F');
+  assert.equal(get('apparatus/score')[0].p.right.score, 4);
+  assert.deepEqual(get('apparatus/lights')[0].p.left, { red: true, white: false });
+  assert.equal(get('apparatus/clock')[0].p.time, '1:45');
+  assert.equal(get('apparatus/fencers')[0].p.right.fencer.name, 'P.Martin');
+  assert.equal(get('apparatus/control')[0].p.command, 'NEXT');
+  assert.equal(get('software/connection')[0].p.online, true);
+  assert.equal(get('apparatus/uw2f').length, 0);
+});
+
 // ── Piste identification without configuration ───────────────────────────
 
 // Minimal INFO: piste field, 10 empty general fields, then the state (field 14).

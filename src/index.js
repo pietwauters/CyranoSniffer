@@ -1,6 +1,6 @@
 'use strict';
 
-// CyranoSniffer — passively reads Cyrano (EFP1.1) UDP traffic and publishes OPP2.
+// CyranoSniffer — passively reads Cyrano (EFP1.1, and 1.0's EFP1) UDP traffic and publishes OPP2.
 //
 //   node src/index.js [--verbose]            live capture
 //   node src/index.js --listen [ports]       receive Cyrano forwarded by the CMS

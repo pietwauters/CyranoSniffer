@@ -1,9 +1,12 @@
 'use strict';
 
-// EFP1.1 (Cyrano) parser. Layout per docs/CyranoProtocol-1-1.pdf §6:
+// Cyrano parser. Layout per docs/CyranoProtocol-1-1.pdf §6:
 //   |EFP1.1|CMD|<17 general fields>|%|<12 right-fencer fields>|%|<12 left-fencer fields>|%|
 // Empty values are consecutive '|'; trailing empty fields and empty areas may
 // be omitted, so every area is padded to its full width.
+// Cyrano 1.0 (|EFP1|, 2008), still sent by older devices, is the same layout
+// without the 12th fencer field (P-card) and with no hundredths on the
+// stopwatch, so it parses as a 1.1 frame whose P-cards are empty.
 
 const GENERAL = ['protocol', 'command', 'piste', 'competition', 'phase', 'poule',
   'match', 'round', 'time', 'stopwatch', 'type', 'weapon', 'priority', 'state',

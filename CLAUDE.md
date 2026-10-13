@@ -5,7 +5,7 @@ published) and docs/windows-install.md (Windows setup).
 
 ## What this is
 
-A passive sniffer: it reads Cyrano (EFP1.1) UDP between a CMS and scoring devices and publishes
+A passive sniffer: it reads Cyrano (EFP1.1, and 1.0's EFP1) UDP between a CMS and scoring devices and publishes
 OPP2 to MQTT. **It must never send anything on the Cyrano network.** The proven UDP path is
 untouched and does not depend on this program; if it crashes, scoring continues.
 
@@ -70,6 +70,8 @@ When you add an option or setting, update the code, the README table and that li
 ## Sources of truth
 
 - Cyrano EFP1.1: `docs/CyranoProtocol-1-1.pdf` in the `esp32scoringdeviceMqtt` repo.
+- Cyrano 1.0 (EFP1): `CyranoProtocol-1-0.doc`. Same fields minus the P-card (11 per fencer) and
+  the stopwatch's hundredths; some devices still send it. No P-card means no `apparatus/uw2f`.
 - OPP2: `docs/level2.md` in that repo (the copy in `OpenPiste/protocols` is a newer, different version).
 - Reference conversion: `src/Opp2Handler.cpp` (`convertOpp2ToCyrano`, `convertCyranoToOpp2*`) there.
 

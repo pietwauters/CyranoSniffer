@@ -1,8 +1,8 @@
 # CyranoSniffer
 
-Passively reads Cyrano (EFP1.1) UDP traffic between a competition management
-system (CMS) and scoring devices, and publishes it as OPP2 to an MQTT broker. It
-never sends anything on the Cyrano network, so the existing workflow is untouched.
+Passively reads Cyrano UDP traffic (EFP1.1, and the older 1.0's EFP1) between a
+competition management system (CMS) and scoring devices, and publishes it as OPP2
+to an MQTT broker. It never sends anything on the Cyrano network, so the existing workflow is untouched.
 
 It runs where it can see the packets: on the CMS PC (Windows with Npcap, or Linux),
 or on a machine attached to a switch mirror port. Pistes need no configuration:
