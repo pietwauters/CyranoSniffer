@@ -208,8 +208,16 @@ the adapter. With `--listen` none of this is needed; just `npm install` and run.
     npm install
     sudo node src/index.js --verbose
 
+`sudo` is needed because Linux does not let ordinary users read raw network traffic.
+Capturing needs two kernel capabilities: `CAP_NET_RAW` to open a raw packet socket on the
+adapter (it sees every frame on the wire, including other machines' traffic, so it is
+restricted), and `CAP_NET_ADMIN` to put the adapter in promiscuous mode (without it the
+network card drops frames addressed to other machines, which on a mirror port is all the
+Cyrano traffic). Root has both. `--listen` needs neither: a normal UDP socket only receives
+packets addressed to this machine.
+
 If Node comes from nvm, `sudo` does not find it: use `sudo "$(which node)" src/index.js`.
-Instead of `sudo` you can grant Node the capability once, which applies to every Node
+Instead of `sudo` you can grant Node just these two capabilities once, which applies to every Node
 script on the machine: `sudo setcap cap_net_raw,cap_net_admin=eip "$(readlink -f "$(which node)")"`.
 Without the privilege the program stops with a message saying so. `--replay` and the tests
 need neither libpcap nor privileges.
