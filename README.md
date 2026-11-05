@@ -5,13 +5,37 @@ competition management system (CMS) and scoring devices, and publishes it as OPP
 to an MQTT broker. It never sends anything on the Cyrano network, so the existing workflow is untouched.
 
 It runs where it can see the packets: on the CMS PC (Windows with Npcap, or Linux),
-or on a machine attached to a switch mirror port. Pistes need no configuration:
+on a machine attached to a switch mirror port, or on any machine the CMS forwards its
+Cyrano traffic to (see [Where to run it](#where-to-run-it)). Pistes need no configuration:
 the piste id is read from each Cyrano message.
 
 - Windows setup, step by step: [docs/windows-install.md](docs/windows-install.md)
 - Feeding results.openpiste.org (live pistes and FIE XML results, one program):
   [docs/results-site.md](docs/results-site.md)
 - Linux setup: see [Linux](#linux) below
+
+## Where to run it
+
+There are two ways to get the Cyrano packets, and only one needs a capture driver.
+
+**Capture (the default)** sniffs packets that are *not addressed to this machine*: the
+CMS sends to the scoring devices, the devices send to the CMS, and the sniffer reads
+those packets off the network adapter. That always needs libpcap (Linux) or Npcap
+(Windows) plus permission to capture (root or `setcap` on Linux), wherever the
+sniffer runs:
+
+| Where | Why capture is needed |
+|---|---|
+| On the CMS PC itself | The CMS owns the Cyrano ports, and the frames it sends go to the devices, so an ordinary socket would not receive them. |
+| On a switch mirror (SPAN) port, or a hub | The copies the switch delivers are still addressed to the CMS and the devices. |
+
+**`--listen`** receives copies that the CMS *deliberately sends to this machine*
+(EnGarde and FencingTime can forward their Cyrano traffic). They are ordinary UDP
+packets addressed to the sniffer, so a plain socket gets them: no libpcap, no Npcap and
+no privileges (for ports above 1024), and no special network setup. See
+[Receiving forwarded Cyrano](#receiving-forwarded-cyrano).
+
+`--replay` and the tests need neither.
 
 ## Quick start
 
@@ -177,7 +201,8 @@ With `--verbose` each line starts with a tag:
 
 ## Linux
 
-Capturing needs libpcap and permission to open the adapter:
+Capturing (on the CMS PC or a mirror port alike) needs libpcap and permission to open
+the adapter. With `--listen` none of this is needed; just `npm install` and run.
 
     sudo apt install libpcap-dev build-essential python3
     npm install
